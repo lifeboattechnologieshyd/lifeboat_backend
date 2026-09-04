@@ -1,12 +1,12 @@
-name: Deploy Ishvaa Communications
+name: Deploy Lifeboat Development
 
 on:
   push:
     branches:
-      - main
+      - development
 
 concurrency:
-  group: deploy-ishvaa-communications-main
+  group: deploy-lifeboat-development
   cancel-in-progress: true
 
 jobs:
@@ -17,38 +17,40 @@ jobs:
       - name: Add SSH key
         run: |
           mkdir -p ~/.ssh
-          printf '%s' "${{ secrets.ISHVAA_EC2_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          printf '%s' "${{ secrets.LIFEBOAT_DEV_EC2_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
       - name: Add known hosts
         run: |
-          ssh-keyscan -H "${{ secrets.ISHVAA_EC2_HOST }}" >> ~/.ssh/known_hosts
+          ssh-keyscan -H "${{ secrets.LIFEBOAT_DEV_EC2_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Deploy to EC2
         run: |
           ssh -i ~/.ssh/id_rsa \
-            "${{ secrets.ISHVAA_EC2_USER }}@${{ secrets.ISHVAA_EC2_HOST }}" << 'EOF'
+            "${{ secrets.LIFEBOAT_DEV_EC2_USER }}@${{ secrets.LIFEBOAT_DEV_EC2_HOST }}" << 'EOF'
+
           set -e
 
-          cd /home/ubuntu/ishvaa_communications_backend
+          cd /home/ubuntu/lifeboat_backend
 
           git fetch origin
-          git reset --hard origin/main
+          git reset --hard origin/development
           git clean -fd
 
-          docker network create ishvaa-communications-network || true
-          docker volume create ishvaa_communications_pg_data || true
+          docker network create lifeboat-network || true
+          docker volume create lifeboat_pg_data || true
 
           docker compose \
-            -p ishvaa-communications \
+            -p lifeboat-development \
             -f deploy/compose/docker-compose.yaml \
             --env-file .env.docker \
             up -d --build --remove-orphans postgres backend
 
           docker image prune -f
 
-          echo "Ishvaa deployment completed"
+          echo "Lifeboat development deployment completed"
 
           docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" \
-            | grep ishvaa || true
+            | grep lifeboat || true
+
           EOF
