@@ -22,3 +22,6 @@ if ENABLE_SILK:
 DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
+
+FRONTEND_URL = "http://127.0.0.1"
+ISHVAA_EMAIL_ID = 'ics_live_25I1njmlVD0OGiaL9orr4RxvTrgIO-JsR6HSRzkGcFY'

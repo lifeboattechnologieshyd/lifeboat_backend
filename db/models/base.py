@@ -44,5 +44,4 @@ class AuditModel(TimeAuditModel, UserAuditModel):
             if self.created_by == "SYSTEM":
                 self.created_by = str(request.user.id)
             self.updated_by = str(request.user.id)
-
         super().save(*args, **kwargs)
