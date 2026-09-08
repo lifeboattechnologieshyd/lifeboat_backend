@@ -1,14 +1,19 @@
 import hashlib
+import hmac
 import json
 
+import razorpay
+from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
+from razorpay.errors import SignatureVerificationError
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from db.models import UserMaster, MagicLoginToken, Plan, Subscription, PaymentTransaction
 from shared.utils import CustomResponse, send_magic_login_link
-from user.razorpay_helper import create_razorpay_subscription, verify_signature
+from user.razorpay_helper import create_razorpay_subscription, verify_signature, get_razorpay_client
 
 
 class SignUpCheck(APIView):
@@ -516,3 +521,247 @@ class Webhook(APIView):
     #             "Failed payment transaction not found:",
     #             razorpay_payment_id
     #         )
+
+class VerifySubscriptionPaymentAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+
+        razorpay_payment_id = request.data.get(
+            "razorpay_payment_id"
+        )
+
+        razorpay_subscription_id = request.data.get(
+            "razorpay_subscription_id"
+        )
+
+        razorpay_signature = request.data.get(
+            "razorpay_signature"
+        )
+
+        # -----------------------------------------
+        # 1. Validate request
+        # -----------------------------------------
+
+        if not razorpay_payment_id:
+            return CustomResponse.errorResponse(
+                description="Razorpay payment ID is required"
+            )
+
+        if not razorpay_subscription_id:
+            return CustomResponse.errorResponse(
+                description="Razorpay subscription ID is required"
+            )
+
+        if not razorpay_signature:
+            return CustomResponse.errorResponse(
+                description="Razorpay signature is required"
+            )
+
+        # -----------------------------------------
+        # 2. Find our subscription
+        # -----------------------------------------
+
+        subscription = Subscription.objects.filter(
+            razorpay_subscription_id=razorpay_subscription_id,
+            user=user
+        ).select_related(
+            "plan"
+        ).first()
+
+        if not subscription:
+            return CustomResponse.errorResponse(
+                description="Subscription not found"
+            )
+        # -----------------------------------------
+        # 3. Verify Razorpay signature
+        #
+        # For subscriptions:
+        # payment_id + "|" + subscription_id
+        # -----------------------------------------
+
+        message = (
+                razorpay_payment_id
+                + "|"
+                + razorpay_subscription_id
+        )
+
+        generated_signature = hmac.new(
+            settings.RAZORPAY_KEY_SECRET.encode(),
+            message.encode(),
+            hashlib.sha256
+        ).hexdigest()
+
+        if not hmac.compare_digest(
+                generated_signature,
+                razorpay_signature
+        ):
+            return CustomResponse.errorResponse(
+                description="Invalid payment signature"
+            )
+
+        # -----------------------------------------
+        # 4. Fetch latest payment status
+        #    directly from Razorpay
+        # -----------------------------------------
+
+        client = razorpay.Client(
+            auth=(
+                settings.RAZORPAY_KEY_ID,
+                settings.RAZORPAY_KEY_SECRET
+            )
+        )
+
+        try:
+            payment = client.payment.fetch(
+                razorpay_payment_id
+            )
+        except Exception as e:
+            print(
+                "Razorpay payment fetch error:",
+                str(e)
+            )
+            return CustomResponse.errorResponse(
+                description="Unable to verify payment with Razorpay"
+            )
+        payment_status = payment.get("status")
+        if payment_status != "captured":
+            return CustomResponse.errorResponse(
+                description=f"Payment is not captured. Current status: {payment_status}"
+            )
+            # -----------------------------------------
+            # 6. Validate currency
+            # -----------------------------------------
+
+        payment_currency = payment.get("currency")
+
+        if payment_currency != "INR":
+            return CustomResponse.errorResponse(
+                    description="Invalid payment currency"
+                )
+
+        # -----------------------------------------
+        # 7. Validate amount
+        # -----------------------------------------
+
+        razorpay_amount = payment.get("amount")
+
+        expected_amount = int(
+            subscription.plan.price * 100
+        )
+
+        if razorpay_amount != expected_amount:
+
+            print(
+                "Payment amount mismatch:",
+                razorpay_amount,
+                expected_amount
+            )
+
+            return CustomResponse.errorResponse(
+                description="Payment amount mismatch"
+            )
+        with transaction.atomic():
+
+            payment_transaction = (
+                PaymentTransaction.objects.filter(
+                    razorpay_payment_id=razorpay_payment_id
+                ).first()
+            )
+
+            if payment_transaction:
+                # ---------------------------------
+                # Payment may have already been
+                # saved by webhook
+                # ---------------------------------
+
+                payment_transaction.status = "captured"
+
+                payment_transaction.razorpay_signature = (
+                    razorpay_signature
+                )
+
+                payment_transaction.save(
+                    update_fields=[
+                        "status",
+                        "razorpay_signature",
+                        "updated_at"
+                    ]
+                )
+
+                print(
+                    "Payment transaction already exists:",
+                    razorpay_payment_id
+                )
+            else:
+
+                payment_transaction = (
+                    PaymentTransaction.objects.create(
+
+                        user=user,
+
+                        subscription=subscription,
+
+                        plan=subscription.plan,
+
+                        amount=(
+                                razorpay_amount / 100
+                        ),
+
+                        currency=payment_currency,
+
+                        razorpay_payment_id=(
+                            razorpay_payment_id
+                        ),
+
+                        razorpay_subscription_id=(
+                            razorpay_subscription_id
+                        ),
+
+                        razorpay_signature=(
+                            razorpay_signature
+                        ),
+
+                        status="captured"
+                    )
+                )
+
+                print(
+                    "Payment transaction created:",
+                    razorpay_payment_id
+                )
+
+        # -----------------------------------------
+        # 9. Return success
+        # -----------------------------------------
+
+        return CustomResponse.successResponse(
+
+            data={
+
+                "payment_verified": True,
+
+                "payment_id": (
+                    razorpay_payment_id
+                ),
+
+                "subscription_id": (
+                    str(subscription.id)
+                ),
+
+                "razorpay_subscription_id": (
+                    razorpay_subscription_id
+                ),
+
+                "payment_status": payment_status,
+
+                "amount": (
+                        razorpay_amount / 100
+                ),
+
+                "currency": payment_currency
+            },
+
+            description="Payment verified successfully"
+        )
