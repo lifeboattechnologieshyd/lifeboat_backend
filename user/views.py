@@ -1,13 +1,14 @@
 import hashlib
+import json
 
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from db.models import UserMaster, MagicLoginToken, Plan, Subscription
+from db.models import UserMaster, MagicLoginToken, Plan, Subscription, PaymentTransaction
 from shared.utils import CustomResponse, send_magic_login_link
-from user.razorpay_helper import create_razorpay_subscription
+from user.razorpay_helper import create_razorpay_subscription, verify_signature
 
 
 class SignUpCheck(APIView):
@@ -185,20 +186,333 @@ class CreatePayment(APIView):
             description="Subscription created successfully"
         )
 
+from datetime import datetime
 
 class Webhook(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        print("\n========== RAZORPAY WEBHOOK ==========")
+        body = request.body.decode("utf-8")
+        signature = request.headers.get("X-Razorpay-Signature")
+        verified = verify_signature(body, signature)
+        if not verified:
+            return CustomResponse.errorResponse(
+                description="Signature Verification failed"\
+            )
+        data = json.loads(body)
+        event = data.get("event")
+        print("Event:", event)
+        event_id = request.headers.get(
+            "X-Razorpay-Event-Id"
+        )
+        print("Razorpay event ID:", event_id)
+        # -----------------------------------------
+        # 7. Handle events
+        # -----------------------------------------
+
+        if event == "subscription.activated":
+
+            self.handle_subscription_activated(data)
+
+        elif event == "subscription.charged":
+
+            self.handle_subscription_charged(data)
+
+        elif event == "subscription.cancelled":
+
+            self.handle_subscription_cancelled(data)
+
+        elif event == "subscription.completed":
+
+            self.handle_subscription_completed(data)
+
+        elif event == "subscription.halted":
+
+            self.handle_subscription_halted(data)
+
+        elif event == "subscription.paused":
+
+            self.handle_subscription_paused(data)
+
+        elif event == "subscription.resumed":
+
+            self.handle_subscription_resumed(data)
+
+        # elif event == "payment.captured":
+        #
+        #     self.handle_payment_captured(data)
+
+        # elif event == "payment.failed":
+        #
+        #     self.handle_payment_failed(data)
+
+        else:
+            print(
+                "Unhandled Razorpay webhook event:",
+                event
+            )
+        # -----------------------------------------
+        # 8. Always return 200 after successful
+        #    signature verification
+        # -----------------------------------------
         return CustomResponse.successResponse(
-            data=request.data,
-            description="Subscription Webhook Responded"
+            data={
+                "received": True
+            },
+            description="Webhook processed successfully"
         )
 
+    def handle_subscription_activated(self, data):
+        subscription_entity = data.get("payload", {}).get("subscription", {}).get("entity", {})
+        if not subscription_entity:
+            return CustomResponse().successResponse(
+                data={},
+                description="Subscription Entity not found"
+            )
+        razorpay_subscription_id = subscription_entity.get("id")
+        subscription = Subscription.objects.filter(
+            razorpay_subscription_id=razorpay_subscription_id
+        ).first()
+        if not subscription:
+            return CustomResponse().successResponse(
+                data={},
+                description="Subscription not found"
+            )
+        # ---------------------------------------------------------
+        # SUBSCRIPTION ACTIVATED
+        # ---------------------------------------------------------
+        subscription.status = "active"
+        if subscription_entity.get("current_start"):
+            subscription.starts_at = datetime.fromtimestamp(
+                subscription_entity["current_start"],
+                tz=timezone.get_current_timezone(),
+            )
+        if subscription_entity.get("current_end"):
+            subscription.end_at = datetime.fromtimestamp(
+                subscription_entity["current_end"],
+                tz=timezone.get_current_timezone(),
+            )
+        if subscription_entity.get("charge_at"):
+            subscription.next_charge_at = datetime.fromtimestamp(
+                subscription_entity["charge_at"],
+                tz=timezone.get_current_timezone(),
+            )
+        subscription.save(
+            update_fields=[
+                "status",
+                "starts_at",
+                "end_at",
+                "next_charge_at",
+            ]
+        )
+        print("Subscription activated:",razorpay_subscription_id)
 
+    def handle_subscription_charged(self, data):
+        subscription_data = data["payload"]["subscription"]["entity"]
+        payment_data = data["payload"].get("payment", {}).get("entity")
+        razorpay_subscription_id = subscription_data["id"]
+        subscription = Subscription.objects.filter(
+            razorpay_subscription_id=razorpay_subscription_id
+        ).first()
+        if not subscription:
+            print(
+                "Subscription not found:",
+                razorpay_subscription_id
+            )
+            return
+        # -----------------------------------------
+        # Update subscription
+        # -----------------------------------------
+        subscription.status = "active"
+        if subscription_data.get("current_start"):
+            subscription.start_at = timezone.datetime.fromtimestamp(
+                subscription_data["current_start"],
+                tz=timezone.get_current_timezone()
+            )
+        if subscription_data.get("current_end"):
+            subscription.end_at = timezone.datetime.fromtimestamp(
+                subscription_data["current_end"],
+                tz=timezone.get_current_timezone()
+            )
+        if subscription_data.get("charge_at"):
+            subscription.next_charge_at = datetime.fromtimestamp(
+                subscription_data["charge_at"],
+                tz=timezone.get_current_timezone(),
+            )
+        subscription.save(
+            update_fields=[
+                "status",
+                "start_at",
+                "end_at",
+                "next_charge_at"
+            ]
+        )
+        # -----------------------------------------
+        # Save payment
+        # -----------------------------------------
+        if payment_data:
+            razorpay_payment_id = payment_data["id"]
+            payment_transaction = PaymentTransaction.objects.filter(
+                razorpay_payment_id=razorpay_payment_id
+            ).first()
+            if not payment_transaction:
+                PaymentTransaction.objects.create(
+                    user=subscription.user,
+                    subscription=subscription,
+                    plan=subscription.plan,
+                    amount=payment_data["amount"] / 100,
+                    currency=payment_data.get(
+                        "currency",
+                        "INR"
+                    ),
+                    razorpay_payment_id=razorpay_payment_id,
+                    razorpay_subscription_id=razorpay_subscription_id,
+                    status="captured"
+                )
+                print(
+                    "Payment transaction created:",
+                    razorpay_payment_id
+                )
+            else:
+                print(
+                    "Payment already exists:",
+                    razorpay_payment_id
+                )
 
+    def handle_subscription_cancelled(self, data):
+        subscription_data = data["payload"]["subscription"]["entity"]
+        razorpay_subscription_id = subscription_data["id"]
+        subscription = Subscription.objects.filter(
+            razorpay_subscription_id=razorpay_subscription_id
+        ).first()
+        if not subscription:
+            return
+        subscription.status = "cancelled"
+        subscription.cancelled_at = timezone.now()
+        subscription.save(
+            update_fields=[
+                "status",
+                "cancelled_at",
+            ]
+        )
+        print("Subscription cancelled:",razorpay_subscription_id)
 
+    def handle_subscription_completed(self, data):
 
+        subscription_data = data["payload"]["subscription"]["entity"]
 
+        razorpay_subscription_id = subscription_data["id"]
 
+        subscription = Subscription.objects.filter(
+            razorpay_subscription_id=razorpay_subscription_id
+        ).first()
 
+        if not subscription:
+            return
+
+        subscription.status = "expired"
+
+        subscription.save(
+            update_fields=[
+                "status",
+            ]
+        )
+
+        print(
+            "Subscription completed:",
+            razorpay_subscription_id
+        )
+
+    def handle_subscription_halted(self, data):
+
+        subscription_data = data["payload"]["subscription"]["entity"]
+
+        razorpay_subscription_id = subscription_data["id"]
+
+        subscription = Subscription.objects.filter(
+            razorpay_subscription_id=razorpay_subscription_id
+        ).first()
+
+        if not subscription:
+            return
+
+        subscription.status = "failed"
+
+        subscription.save(
+            update_fields=[
+                "status",
+            ]
+        )
+
+        print(
+            "Subscription halted:",
+            razorpay_subscription_id
+        )
+
+    def handle_subscription_paused(self, data):
+
+        subscription_data = data["payload"]["subscription"]["entity"]
+
+        razorpay_subscription_id = subscription_data["id"]
+
+        subscription = Subscription.objects.filter(
+            razorpay_subscription_id=razorpay_subscription_id
+        ).first()
+
+        if not subscription:
+            return
+
+        subscription.status = "paused"
+
+        subscription.save(
+            update_fields=[
+                "status",
+            ]
+        )
+
+    def handle_subscription_resumed(self, data):
+        subscription_data = data["payload"]["subscription"]["entity"]
+        razorpay_subscription_id = subscription_data["id"]
+        subscription = Subscription.objects.filter(
+            razorpay_subscription_id=razorpay_subscription_id
+        ).first()
+        if not subscription:
+            return
+
+        subscription.status = "active"
+        subscription.save(
+            update_fields=[
+                "status",
+            ]
+        )
+
+    # def handle_payment_failed(self, data):
+    #
+    #     payment_data = data["payload"]["payment"]["entity"]
+    #
+    #     razorpay_payment_id = payment_data["id"]
+    #
+    #     payment_transaction = PaymentTransaction.objects.filter(
+    #         razorpay_payment_id=razorpay_payment_id
+    #     ).first()
+    #
+    #     if payment_transaction:
+    #         payment_transaction.status = "failed"
+    #         payment_transaction.save(
+    #             update_fields=[
+    #                 "status",
+    #                 "updated_at"
+    #             ]
+    #         )
+    #
+    #         print(
+    #             "Payment marked failed:",
+    #             razorpay_payment_id
+    #         )
+    #
+    #     else:
+    #         print(
+    #             "Failed payment transaction not found:",
+    #             razorpay_payment_id
+    #         )
