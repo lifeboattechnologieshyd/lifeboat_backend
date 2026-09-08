@@ -34,7 +34,3 @@ class SignUpCheck(APIView):
 
 
 
-
-
-
-
