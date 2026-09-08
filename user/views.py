@@ -70,7 +70,6 @@ class ValidateMagicToken(APIView):
                     email=email,
                     username=email.split("@")[0]
                 )
-
                 print(f"New user created: {user.id}")
 
             # Mark token as used
