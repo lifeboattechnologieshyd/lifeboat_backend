@@ -1,5 +1,4 @@
 from django.urls import path
-
 from backoffice.plans import SubPlans
 
 urlpatterns = [

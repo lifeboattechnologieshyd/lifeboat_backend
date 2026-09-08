@@ -1,10 +1,11 @@
 import hashlib
 
 from django.utils import timezone
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from db.models import UserMaster, MagicLoginToken
+from db.models import UserMaster, MagicLoginToken, Plan
 from shared.utils import CustomResponse, send_magic_login_link
 
 
@@ -91,6 +92,33 @@ class ValidateMagicToken(APIView):
         else:
             return CustomResponse.errorResponse(data={},
                                                 description="Link Expired or Invalid, Please try again")
+
+class Plans(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request):
+        print("Fetching active plans")
+        plans = Plan.objects.filter(
+            is_active=True
+        ).order_by(
+            "price"
+        )
+        data = []
+        for plan in plans:
+            data.append({
+                "id": str(plan.id),
+                "name": plan.name,
+                "code": plan.code,
+                "price": str(plan.price),
+                "billing_interval": plan.billing_interval,
+                "billing_interval_count": plan.billing_interval_count,
+                "description": plan.description,
+                "is_recommended": plan.is_recommended
+            })
+        return CustomResponse.successResponse(
+            data=data,
+            description="Plans fetched successfully"
+        )
+
 
 
 
