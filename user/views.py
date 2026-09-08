@@ -5,8 +5,9 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from db.models import UserMaster, MagicLoginToken, Plan
+from db.models import UserMaster, MagicLoginToken, Plan, Subscription
 from shared.utils import CustomResponse, send_magic_login_link
+from user.razorpay_helper import create_razorpay_subscription
 
 
 class SignUpCheck(APIView):
@@ -118,6 +119,73 @@ class Plans(APIView):
             data=data,
             description="Plans fetched successfully"
         )
+
+
+
+class CreatePayment(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        user = request.user
+        plan_id = request.data.get("plan_id")
+        if not plan_id:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Plan is required."
+            )
+        plan = Plan.objects.filter(
+            id=plan_id,
+            is_active=True,
+        )
+        if not plan:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Invalid Plan Selected"
+            )
+        if not plan.razorpay_plan_id:
+            return CustomResponse.errorResponse(
+                description="Razorpay plan is not configured"
+            )
+        # Check if user already has an active subscription
+        active_subscription = Subscription.objects.filter(
+            user=user,
+            status="active"
+        ).first()
+        #todo: need to check if upgrade is possible.
+        if active_subscription:
+            return CustomResponse.errorResponse(
+                description="You already have an active subscription"
+            )
+        print("========== CREATING RAZORPAY SUBSCRIPTION ==========")
+        razorpay_response = create_razorpay_subscription(
+            plan_id=plan.razorpay_plan_id,
+        )
+        print("========== RAZORPAY RESPONSE ==========")
+        print(razorpay_response)
+        razorpay_subscription_id = razorpay_response["id"]
+        # Save Lifeboat subscription
+        subscription = Subscription.objects.create(
+            user=user,
+            plan=plan,
+            razorpay_subscription_id=razorpay_subscription_id,
+            status="created"
+        )
+        return CustomResponse.successResponse(
+            data={
+                "subscription_id": str(
+                    subscription.id
+                ),
+                "razorpay_subscription_id": (
+                    subscription.razorpay_subscription_id
+                ),
+                "plan_id": str(plan.id),
+                "plan_name": plan.name,
+                "amount": str(plan.price),
+                "currency": "INR"
+            },
+            description="Subscription created successfully"
+        )
+
+
 
 
 

@@ -1,8 +1,10 @@
 from django.db import models
 import uuid
 
+from db.models import AuditModel, UserMaster
 
-class Plan(models.Model):
+
+class Plan(AuditModel):
     BILLING_INTERVAL_CHOICES = (
         ("month", "Monthly"),
         ("year", "Yearly"),
@@ -53,3 +55,72 @@ class Plan(models.Model):
     )
     def __str__(self):
         return f"{self.name} - ₹{self.price}"
+
+    class Meta:
+        db_table = "plans"
+
+
+class Subscription(AuditModel):
+
+    STATUS_CHOICES = (
+        ("created", "Created"),
+        ("active", "Active"),
+        ("paused", "Paused"),
+        ("cancelled", "Cancelled"),
+        ("expired", "Expired"),
+        ("failed", "Failed"),
+    )
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    user = models.ForeignKey(
+        UserMaster,
+        on_delete=models.PROTECT,
+        related_name="subscriptions"
+    )
+
+    plan = models.ForeignKey(
+        Plan,
+        on_delete=models.PROTECT,
+        related_name="subscriptions"
+    )
+
+    razorpay_subscription_id = models.CharField(
+        max_length=100,
+        unique=True,
+        null=True,
+        blank=True
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="created"
+    )
+
+    start_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    end_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+    def __str__(self):
+        return f"{self.user} - ₹{self.plan} - {self.created_at}"
+
+    class Meta:
+        db_table = "subscriptions"

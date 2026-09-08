@@ -3,6 +3,8 @@ import uuid
 from django.contrib.auth.base_user import BaseUserManager, AbstractBaseUser
 from django.db import models
 
+from db.models import AuditModel
+
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, mobile, password="password", **extra_fields):
@@ -36,7 +38,7 @@ class UserMaster(AbstractBaseUser):
         db_table = "user-master"
 
 
-class MagicLoginToken(models.Model):
+class MagicLoginToken(AuditModel):
     id = models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
     email = models.EmailField(max_length=100)
     token_hash = models.CharField(max_length=128)
