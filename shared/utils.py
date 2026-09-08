@@ -80,7 +80,7 @@ def send_magic_login_link(email):
     send_otp_email(magic_link, email)
 
 
-def send_otp_email(magic_link, email='padidalaranjith@gmail.com'):
+def send_otp_email(magic_link, email):
     url = 'https://api.ishaa.eshily.com/api/v1/email/send'
     headers = {
         'X-API-Key': settings.ISHVAA_EMAIL_ID,
@@ -93,7 +93,7 @@ def send_otp_email(magic_link, email='padidalaranjith@gmail.com'):
         }
     )
     payload = {
-        "from_name": "VocabBee",
+        "from_name": "Lifeboat",
         "from": "noreply@vocabbee.com",
         "to": [
             email
