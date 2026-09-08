@@ -2,6 +2,7 @@ import hashlib
 
 from django.utils import timezone
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from db.models import UserMaster, MagicLoginToken
 from shared.utils import CustomResponse, send_magic_login_link
@@ -56,14 +57,12 @@ class ValidateMagicToken(APIView):
                 return CustomResponse.errorResponse(
                     description="This login link has expired"
                 )
-
             email = magic_token.email
             print(f"Magic link validated for {email}")
             # Check if user already exists
             user = UserMaster.objects.filter(
                 email=email
             ).first()
-
             # Create user only after successful magic-link validation
             if not user:
                 user = UserMaster.objects.create(
@@ -71,23 +70,27 @@ class ValidateMagicToken(APIView):
                     username=email.split("@")[0]
                 )
                 print(f"New user created: {user.id}")
-
             # Mark token as used
             magic_token.used_at = timezone.now()
             magic_token.save(
                 update_fields=["used_at"]
             )
-
+            # Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
             return CustomResponse.successResponse(
                 data={
-                    "user_id": str(user.id),
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
                     "email": user.email,
                     "is_new_user": True
                 },
                 description="Email verified successfully"
             )
         else:
-            return CustomResponse.errorResponse(data={}, description="Link Expired or Invalid, Please try again")
+            return CustomResponse.errorResponse(data={},
+                                                description="Link Expired or Invalid, Please try again")
 
 
 
