@@ -186,6 +186,14 @@ class CreatePayment(APIView):
         )
 
 
+class Webhook(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        return CustomResponse.successResponse(
+            data=request.data,
+            description="Subscription Webhook Responded"
+        )
 
 
 
