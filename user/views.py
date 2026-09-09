@@ -167,7 +167,7 @@ class CreatePayment(APIView):
         plan = Plan.objects.filter(
             id=plan_id,
             is_active=True,
-        )
+        ).first()
         if not plan:
             return CustomResponse().errorResponse(
                 data={},
