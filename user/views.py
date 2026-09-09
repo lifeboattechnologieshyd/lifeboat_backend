@@ -5,6 +5,7 @@ import secrets
 
 import razorpay
 from django.conf import settings
+from django.contrib.auth import authenticate
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -158,6 +159,58 @@ class SetPassword(APIView):
             description="Password set successfully"
         )
 
+class Login(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        email = request.data.get("email")
+        password = request.data.get("password")
+        # -----------------------------------------
+        # 1. Validate request
+        # -----------------------------------------
+        if not email:
+            return CustomResponse.errorResponse(
+                description="Email is required"
+            )
+        if not password:
+            return CustomResponse.errorResponse(
+                description="Password is required"
+            )
+        email = email.strip().lower()
+        # -----------------------------------------
+        # 2. Authenticate user
+        # -----------------------------------------
+        user = authenticate(
+            request=request,
+            email=email,
+            password=password
+        )
+        if not user:
+            return CustomResponse.errorResponse(
+                description="Invalid email or password"
+            )
+        # -----------------------------------------
+        # 3. Check active user
+        # -----------------------------------------
+        if not user.is_active:
+            return CustomResponse.errorResponse(
+                description="Your account is inactive"
+            )
+        # -----------------------------------------
+        # 4. Generate JWT
+        # -----------------------------------------
+        refresh = RefreshToken.for_user(user)
+        # -----------------------------------------
+        # 5. Response
+        # -----------------------------------------
+        return CustomResponse.successResponse(
+            data={
+                "user_id": str(user.id),
+                "email": user.email,
+                "access_token": str(refresh.access_token),
+                "refresh_token": str(refresh)
+            },
+            description="Login successful"
+        )
 class ValidateMagicToken(APIView):
 
     def post(self, request):

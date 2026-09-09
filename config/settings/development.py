@@ -15,4 +15,4 @@ if ENABLE_SILK:
     INSTALLED_APPS += ["silk"]
     MIDDLEWARE += ["silk.middleware.SilkyMiddleware"]
 
-FRONTEND_URL = "http://localhost:5174/"
+FRONTEND_URL = "https://dev-web.lifeboattechnologies.com/"
