@@ -7,7 +7,6 @@ import razorpay
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
-from razorpay.errors import SignatureVerificationError
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -66,6 +65,106 @@ class SignUpCheck(APIView):
             return CustomResponse.successResponse(data={
                 "is_login_flow":False,
             }, description="Mail sent successfully")
+
+
+class VerifyOTP(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        email = request.data.get("email")
+        otp = request.data.get("otp")
+        if not email:
+            return CustomResponse.errorResponse(
+                description="Email is required"
+            )
+        if not otp:
+            return CustomResponse.errorResponse(
+                description="OTP is required"
+            )
+        email = email.strip().lower()
+        otp_record = (
+            OTP.objects
+            .filter(
+                email=email,
+                verified_at__isnull=True
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        if not otp_record:
+            return CustomResponse.errorResponse(
+                description="Invalid OTP"
+            )
+        if otp_record.expires_at <= timezone.now():
+            return CustomResponse.errorResponse(
+                description="OTP has expired"
+            )
+        # if otp_record.attempts >= 5:
+        #     return CustomResponse.errorResponse(
+        #         description="Too many OTP attempts"
+        #     )
+        # -----------------------------------------
+        # 5. Verify OTP
+        # -----------------------------------------
+
+        if otp != otp_record.otp:
+            otp_record.attempts += 1
+            otp_record.save(
+                update_fields=[
+                    "attempts"
+                ]
+            )
+            return CustomResponse.errorResponse(
+                description="Invalid OTP"
+            )
+        otp_record.verified_at = timezone.now()
+        otp_record.save(
+            update_fields=[
+                "verified_at",
+            ]
+        )
+        user = UserMaster.objects.filter(
+            email=email
+        ).first()
+        if not user:
+            user = UserMaster.objects.create(
+                email=email,
+                username=email.split("@")[0]
+            )
+            print(f"New user created: {user.id}")
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+        return CustomResponse.successResponse(
+            data={
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "email": user.email,
+            },
+            description="Email verified successfully"
+        )
+
+class SetPassword(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        password = request.data.get("password")
+        if not password:
+            return CustomResponse.errorResponse(
+                description="Password is required"
+            )
+        if len(password) < 8:
+            return CustomResponse.errorResponse(
+                description="Password must be at least 8 characters"
+            )
+        user.set_password(password)
+        user.save(update_fields=["password"])
+        return CustomResponse.successResponse(
+            data={
+                "password_set": True
+            },
+            description="Password set successfully"
+        )
 
 class ValidateMagicToken(APIView):
 
