@@ -7,11 +7,14 @@ from db.models import AuditModel
 
 
 class CustomUserManager(BaseUserManager):
-    def create_user(self, mobile, password="password", **extra_fields):
+    def create_user(self, mobile, password=None, **extra_fields):
         if not mobile:
             raise ValueError("The Mobile Number must be set")
         user = self.model(mobile=mobile, **extra_fields)
-        user.set_password(password)
+        if password:
+            user.set_password(password)
+        else:
+            user.set_unusable_password()
         user.save(using=self._db)
         return user
 
