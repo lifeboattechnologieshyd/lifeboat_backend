@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from rest_framework import status
 
-from db.models import MagicLoginToken
+from db.models import MagicLoginToken, OTP
 
 
 ########################
@@ -77,20 +77,44 @@ def send_magic_login_link(email):
         expires_at=expires_at
     )
     magic_link = f"{settings.FRONTEND_URL}/email-verification/{raw_token}/"
-    send_otp_email(magic_link, email)
+    context = {
+        "magic_link": magic_link
+    }
+    send_otp_email(email, "emails/magic_email.html", context, f"Login to Lifeboat")
 
 
-def send_otp_email(magic_link, email):
-    url = 'https://api.ishaa.eshily.com/api/v1/email/send'
+
+def otp_preparation_for_login(email):
+    otp = str(
+        secrets.randbelow(1000000)
+    ).zfill(6)
+    expires_at = timezone.now() + timedelta(minutes=10)
+    OTP.objects.filter(
+        email=email,
+        verified_at__isnull=True
+    ).update(
+        expires_at=timezone.now()
+    )
+    OTP.objects.create(
+        email=email,
+        otp=otp,
+        expires_at=expires_at
+    )
+    context = {
+        "otp": otp
+    }
+    send_otp_email(email, "emails/otp_email.html", context, f"Your Lifeboat verification code")
+
+
+def send_otp_email(email, template, context, subject):
+    url = settings.ISHVAA_BASE_URL
     headers = {
-        'X-API-Key': settings.ISHVAA_EMAIL_ID,
+        'X-API-Key': settings.ISHVAA_EMAIL_API_KEY,
         'Content-Type': 'application/json'
     }
     html_content = render_to_string(
-        "emails/magic_email.html",
-        {
-            "magic_link": magic_link
-        }
+        template,
+        context
     )
     payload = {
         "from_name": "Lifeboat",
@@ -98,12 +122,9 @@ def send_otp_email(magic_link, email):
         "to": [
             email
         ],
-        "subject": f"Login to Lifeboat",
+        "subject": subject,
         "html": html_content
     }
     response = requests.post(url, headers=headers, json=payload)
     print("Mail status:", response.json())
-
-
-
 

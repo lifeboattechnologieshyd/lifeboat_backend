@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from db.models import UserMaster, MagicLoginToken, Plan, Subscription, PaymentTransaction, OTP
-from shared.utils import CustomResponse, send_magic_login_link
+from shared.utils import CustomResponse, send_magic_login_link, otp_preparation_for_login
 from user.razorpay_helper import create_razorpay_subscription, verify_signature, get_razorpay_client
 
 
@@ -27,25 +27,11 @@ class SignUpCheck(APIView):
         os = data.get("os")
         model = data.get("model")
         os_version = data.get("os_version")
+        source = data.get("source", "mobile")
         user = UserMaster.objects.filter(email=email).first()
         if user:
-            if not user.has_password():
-                otp = str(
-                    secrets.randbelow(1000000)
-                ).zfill(6)
-                expires_at = timezone.now() + timedelta(minutes=10)
-                OTP.objects.filter(
-                    email=email,
-                    verified_at__isnull=True
-                ).update(
-                    expires_at=timezone.now()
-                )
-                OTP.objects.create(
-                    email=email,
-                    otp=otp,
-                    expires_at=expires_at
-                )
-                #todo: send otp to email using ishvaa communication api
+            if not user.has_usable_password():
+                otp_preparation_for_login(email)
                 return CustomResponse.successResponse(data={
                     "is_login_flow": True,
                     "password_required": False,
@@ -60,6 +46,12 @@ class SignUpCheck(APIView):
                 }, description="Please enter password")
 
         else:
+            if source == "website":
+                otp_preparation_for_login(email)
+                return CustomResponse.successResponse(data={
+                    "is_login_flow": True,
+                    "password_required": False,
+                }, description="OTP Mail sent successfully")
             print("user does not exists so sending an email")
             send_magic_login_link(email)
             return CustomResponse.successResponse(data={
