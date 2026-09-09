@@ -53,3 +53,15 @@ class MagicLoginToken(AuditModel):
 
     class Meta:
         db_table = "email-token"
+
+
+class OTP(AuditModel):
+    id = models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    email = models.EmailField(max_length=100)
+    otp = models.CharField(max_length=128)
+    expires_at = models.DateTimeField()
+    verified_at = models.DateTimeField(null=True,blank=True)
+    attempts = models.PositiveIntegerField(default=0)
+    class Meta:
+        db_table = "email-otp"
+

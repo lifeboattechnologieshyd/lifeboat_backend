@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import json
+import secrets
 
 import razorpay
 from django.conf import settings
@@ -11,7 +12,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from db.models import UserMaster, MagicLoginToken, Plan, Subscription, PaymentTransaction
+from db.models import UserMaster, MagicLoginToken, Plan, Subscription, PaymentTransaction, OTP
 from shared.utils import CustomResponse, send_magic_login_link
 from user.razorpay_helper import create_razorpay_subscription, verify_signature, get_razorpay_client
 
@@ -29,11 +30,36 @@ class SignUpCheck(APIView):
         os_version = data.get("os_version")
         user = UserMaster.objects.filter(email=email).first()
         if user:
-            print("User exists so asking him password")
-            return CustomResponse.successResponse(data={
-                "is_login_flow":True,
-                "email": user.email
-            }, description="Please enter password")
+            if not user.has_password():
+                otp = str(
+                    secrets.randbelow(1000000)
+                ).zfill(6)
+                expires_at = timezone.now() + timedelta(minutes=10)
+                OTP.objects.filter(
+                    email=email,
+                    verified_at__isnull=True
+                ).update(
+                    expires_at=timezone.now()
+                )
+                OTP.objects.create(
+                    email=email,
+                    otp=otp,
+                    expires_at=expires_at
+                )
+                #todo: send otp to email using ishvaa communication api
+                return CustomResponse.successResponse(data={
+                    "is_login_flow": True,
+                    "password_required": False,
+                    "email": user.email
+                }, description="OTP has been sent to email address")
+            else:
+                print("User exists so asking him password")
+                return CustomResponse.successResponse(data={
+                    "is_login_flow": True,
+                    "password_required":True,
+                    "email": user.email
+                }, description="Please enter password")
+
         else:
             print("user does not exists so sending an email")
             send_magic_login_link(email)
@@ -191,7 +217,8 @@ class CreatePayment(APIView):
             description="Subscription created successfully"
         )
 
-from datetime import datetime
+from datetime import datetime, timedelta
+
 
 class Webhook(APIView):
     permission_classes = [AllowAny]
