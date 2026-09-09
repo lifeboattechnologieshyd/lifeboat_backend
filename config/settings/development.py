@@ -15,5 +15,5 @@ if ENABLE_SILK:
     INSTALLED_APPS += ["silk"]
     MIDDLEWARE += ["silk.middleware.SilkyMiddleware"]
 
-FRONTEND_URL = "http://127.0.0.1"
+FRONTEND_URL = "http://localhost:5174/"
 ISHVAA_EMAIL_ID = 'ics_live_25I1njmlVD0OGiaL9orr4RxvTrgIO-JsR6HSRzkGcFY'

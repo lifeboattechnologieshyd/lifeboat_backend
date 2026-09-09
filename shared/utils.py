@@ -76,7 +76,7 @@ def send_magic_login_link(email):
         token_hash=token_hash,
         expires_at=expires_at
     )
-    magic_link = f"{settings.FRONTEND_URL}/auth/magic-login/{raw_token}/"
+    magic_link = f"{settings.FRONTEND_URL}/email-verification/{raw_token}/"
     send_otp_email(magic_link, email)
 
 
