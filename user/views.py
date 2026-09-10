@@ -6,13 +6,17 @@ import secrets
 import razorpay
 from django.conf import settings
 from django.contrib.auth import authenticate
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from db.models import UserMaster, MagicLoginToken, Plan, Subscription, PaymentTransaction, OTP
+from shared.clients.aws.s3 import add_unique_suffix_to_filename, sanitize_filename
 from shared.utils import CustomResponse, send_magic_login_link, otp_preparation_for_login
 from user.razorpay_helper import create_razorpay_subscription, verify_signature, get_razorpay_client
 
@@ -179,14 +183,19 @@ class Login(APIView):
         # -----------------------------------------
         # 2. Authenticate user
         # -----------------------------------------
-        user = authenticate(
-            request=request,
-            email=email,
-            password=password
-        )
+
+        user = UserMaster.objects.filter(
+            email=email
+        ).first()
+
+
         if not user:
             return CustomResponse.errorResponse(
-                description="Invalid email or password"
+                description="Invalid email"
+            )
+        if not user.check_password(password):
+            return CustomResponse.errorResponse(
+                description="Invalid password"
             )
         # -----------------------------------------
         # 3. Check active user
@@ -423,6 +432,35 @@ class MySubscription(APIView):
 
             description="Subscription details fetched successfully"
         )
+
+
+class FileUploadView(APIView):
+    permission_classes = [AllowAny]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, *args, **kwargs):
+        files = request.FILES.getlist("files")
+        path = request.data.get("path", "temp")
+        if not files:
+            return CustomResponse.errorResponse(description="Files are empty")
+        uploaded_files = []
+        try:
+            for file_obj in files:
+                # Save each file to the default storage
+                sanitized_filename = add_unique_suffix_to_filename(sanitize_filename(file_obj.name))
+                file_path = default_storage.save(f"{path}/{sanitized_filename}", ContentFile(file_obj.read()))
+                file_url = settings.MEDIA_URL + file_path
+                uploaded_files.append(
+                    {"original_filename": file_obj.name, "file_url": file_url, "file_path": file_path}
+                )
+
+            return CustomResponse().successResponse(uploaded_files)
+
+        except Exception as e:
+            return CustomResponse().errorResponse(
+                description="File upload failed"
+            )
+
 
 class ProfileView(APIView):
     permission_classes = [IsAuthenticated]
