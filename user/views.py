@@ -224,8 +224,7 @@ class Login(APIView):
                 "status": subscription.status,
                 "start_at": subscription.start_at,
                 "end_at": subscription.end_at,
-                "next_billing_at": subscription.next_billing_at,
-                "cancel_at_period_end": subscription.cancel_at_period_end
+                "next_billing_at": subscription.next_charge_at,
             }
         # -----------------------------------------
         # 5. Response
