@@ -433,7 +433,7 @@ class FileUploadView(APIView):
 
     def post(self, request, *args, **kwargs):
         files = request.FILES.getlist("files")
-        path = request.data.get("path", "temp")
+        path = request.data.get("path", "test")
         if not files:
             return CustomResponse.errorResponse(description="Files are empty")
         uploaded_files = []
