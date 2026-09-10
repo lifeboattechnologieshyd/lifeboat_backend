@@ -416,13 +416,8 @@ class MySubscription(APIView):
                     ),
 
                     "next_billing_at": (
-                        subscription.next_billing_at
+                        subscription.next_charge_at
                     ),
-
-                    "cancel_at_period_end": (
-                        subscription.cancel_at_period_end
-                    ),
-
                     "cancelled_at": (
                         subscription.cancelled_at
                     )
