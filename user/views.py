@@ -423,7 +423,6 @@ class MySubscription(APIView):
                     )
                 }
             },
-
             description="Subscription details fetched successfully"
         )
 
