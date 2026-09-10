@@ -199,6 +199,25 @@ class Login(APIView):
         # 4. Generate JWT
         # -----------------------------------------
         refresh = RefreshToken.for_user(user)
+        subscription = Subscription.objects.filter(
+                    user=user,
+                    status="active"
+                ).select_related("plan").order_by("-created_at").first()
+
+        subscription_data = {
+            "is_active": False
+        }
+        if subscription:
+            subscription_data = {
+                "is_active": True,
+                "plan_code": subscription.plan.code,
+                "plan_name": subscription.plan.name,
+                "status": subscription.status,
+                "start_at": subscription.start_at,
+                "end_at": subscription.end_at,
+                "next_billing_at": subscription.next_billing_at,
+                "cancel_at_period_end": subscription.cancel_at_period_end
+            }
         # -----------------------------------------
         # 5. Response
         # -----------------------------------------
@@ -207,10 +226,12 @@ class Login(APIView):
                 "user_id": str(user.id),
                 "email": user.email,
                 "access_token": str(refresh.access_token),
-                "refresh_token": str(refresh)
+                "refresh_token": str(refresh),
+                "subscription":subscription_data
             },
             description="Login successful"
         )
+
 class ValidateMagicToken(APIView):
 
     def post(self, request):
@@ -297,6 +318,140 @@ class Plans(APIView):
         )
 
 
+
+class MySubscription(APIView):
+
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        user = request.user
+        # -----------------------------------------
+        # Get latest active subscription
+        # -----------------------------------------
+        subscription = (
+            Subscription.objects
+            .filter(
+                user=user,
+                status="active"
+            )
+            .select_related("plan")
+            .order_by("-created_at")
+            .first()
+        )
+        # -----------------------------------------
+        # No active subscription
+        # -----------------------------------------
+        if not subscription:
+            return CustomResponse.successResponse(
+                data={
+                    "is_subscribed": False,
+                    "subscription": None
+                },
+                description="No active membership found"
+            )
+
+        # -----------------------------------------
+        # Active subscription
+        # -----------------------------------------
+
+        return CustomResponse.successResponse(
+
+            data={
+                "is_subscribed": True,
+                "subscription": {
+
+                    "id": str(
+                        subscription.id
+                    ),
+
+                    "razorpay_subscription_id": (
+                        subscription.razorpay_subscription_id
+                    ),
+
+                    "plan": {
+
+                        "id": str(
+                            subscription.plan.id
+                        ),
+
+                        "code": (
+                            subscription.plan.code
+                        ),
+
+                        "name": (
+                            subscription.plan.name
+                        ),
+
+                        "price": str(
+                            subscription.plan.price
+                        ),
+
+                        "billing_interval": (
+                            subscription.plan.billing_interval
+                        ),
+
+                        "billing_interval_count": (
+                            subscription.plan.billing_interval_count
+                        )
+
+                    },
+
+                    "status": (
+                        subscription.status
+                    ),
+
+                    "start_at": (
+                        subscription.start_at
+                    ),
+
+                    "end_at": (
+                        subscription.end_at
+                    ),
+
+                    "next_billing_at": (
+                        subscription.next_billing_at
+                    ),
+
+                    "cancel_at_period_end": (
+                        subscription.cancel_at_period_end
+                    ),
+
+                    "cancelled_at": (
+                        subscription.cancelled_at
+                    )
+                }
+            },
+
+            description="Subscription details fetched successfully"
+        )
+
+class ProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        data = request.data
+        if "username" in data:
+            user.username = data["username"]
+        if "image" in data:
+            user.image = data["image"]
+        if "bio" in data:
+            user.bio = data["bio"]
+        if "mobile" in data:
+            user.bio = data["mobile"]
+        user.save()
+        return CustomResponse.successResponse(data={}, description="Profile Updated Successfully")
+
+
+    def get(self, request):
+        user = request.user
+        resp = {
+            "email": user.email,
+            "bio": user.bio,
+            "mobile": user.mobile,
+            "username": user.username,
+            "image": user.image,
+        }
+        return CustomResponse.successResponse(data=resp)
 
 class CreatePayment(APIView):
     permission_classes = [IsAuthenticated]
