@@ -1,7 +1,7 @@
 from django.db.models import Sum
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
-from db.models import Category, Technology, Course
+from db.models import Category, Technology, Course, CourseModule, Lesson
 from shared.utils import CustomResponse
 
 
@@ -658,4 +658,456 @@ class CourseListCreate(APIView):
                 "is_published": course.is_published
             },
             description="Course unpublished successfully"
+        )
+
+
+class CourseModuleListCreate(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        modules = CourseModule.objects.select_related(
+            "course"
+        ).all()
+        data = []
+        for module in modules:
+
+            data.append({
+                "id": str(module.id),
+                "course": {
+                    "id": str(module.course.id),
+                    "title": module.course.title
+                },
+                "title": module.title,
+                "description": module.description,
+                "sort_order": module.sort_order,
+                "is_published": module.is_published,
+                "created_at": module.created_at,
+                "updated_at": module.updated_at,
+            })
+
+        return CustomResponse.successResponse(
+            data=data,
+            description="Course modules fetched successfully"
+        )
+
+    def post(self, request):
+
+        course_id = request.data.get("course_id")
+        title = request.data.get("title")
+        description = request.data.get("description")
+        sort_order = request.data.get("sort_order", 0)
+        is_published = request.data.get("is_published", False)
+
+        # -------------------------
+        # Validation
+        # -------------------------
+
+        if not course_id:
+            return CustomResponse.errorResponse(
+                description="Course ID is required"
+            )
+
+        if not title:
+            return CustomResponse.errorResponse(
+                description="Module title is required"
+            )
+
+        title = title.strip()
+
+        if not title:
+            return CustomResponse.errorResponse(
+                description="Module title cannot be empty"
+            )
+
+        course = Course.objects.filter(
+            id=course_id
+        ).first()
+
+        if not course:
+            return CustomResponse.errorResponse(
+                description="Course not found"
+            )
+
+        # -------------------------
+        # Create
+        # -------------------------
+
+        module = CourseModule.objects.create(
+            course=course,
+            title=title,
+            description=description,
+            sort_order=sort_order,
+            is_published=is_published
+        )
+
+        return CustomResponse.successResponse(
+            data={
+                "id": str(module.id),
+                "course": {
+                    "id": str(course.id),
+                    "title": course.title
+                },
+                "title": module.title,
+                "description": module.description,
+                "sort_order": module.sort_order,
+                "is_published": module.is_published,
+            },
+            description="Course module created successfully"
+        )
+
+    def put(self, request, module_id):
+
+        module = CourseModule.objects.filter(
+            id=module_id
+        ).first()
+
+        if not module:
+            return CustomResponse.errorResponse(
+                description="Course module not found"
+            )
+
+        course_id = request.data.get("course_id")
+        title = request.data.get("title")
+        description = request.data.get("description")
+        sort_order = request.data.get("sort_order")
+        is_published = request.data.get("is_published")
+
+        # -------------------------
+        # Course
+        # -------------------------
+
+        if course_id is not None:
+
+            course = Course.objects.filter(
+                id=course_id
+            ).first()
+
+            if not course:
+                return CustomResponse.errorResponse(
+                    description="Course not found"
+                )
+
+            module.course = course
+
+        # -------------------------
+        # Title
+        # -------------------------
+
+        if title is not None:
+
+            title = title.strip()
+
+            if not title:
+                return CustomResponse.errorResponse(
+                    description="Module title cannot be empty"
+                )
+
+            module.title = title
+
+        # -------------------------
+        # Other fields
+        # -------------------------
+
+        if description is not None:
+            module.description = description
+
+        if sort_order is not None:
+            module.sort_order = sort_order
+
+        if is_published is not None:
+            module.is_published = is_published
+
+        module.save()
+
+        return CustomResponse.successResponse(
+            data={
+                "id": str(module.id),
+                "course": {
+                    "id": str(module.course.id),
+                    "title": module.course.title
+                },
+                "title": module.title,
+                "description": module.description,
+                "sort_order": module.sort_order,
+                "is_published": module.is_published,
+            },
+            description="Course module updated successfully"
+        )
+
+    def delete(self, request, module_id):
+
+        module = CourseModule.objects.filter(
+            id=module_id
+        ).first()
+
+        if not module:
+            return CustomResponse.errorResponse(
+                description="Course module not found"
+            )
+
+        module.is_published = False
+
+        module.save(
+            update_fields=[
+                "is_published",
+                "updated_at"
+            ]
+        )
+
+        return CustomResponse.successResponse(
+            data={
+                "id": str(module.id),
+                "is_published": module.is_published
+            },
+            description="Course module unpublished successfully"
+        )
+
+
+class LessonListCreate(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        lessons = Lesson.objects.select_related(
+            "module",
+            "module__course"
+        ).all()
+        data = []
+        for lesson in lessons:
+            data.append({
+                "id": str(lesson.id),
+                "course": {
+                    "id": str(lesson.module.course.id),
+                    "title": lesson.module.course.title
+                },
+                "module": {
+                    "id": str(lesson.module.id),
+                    "title": lesson.module.title
+                },
+                "title": lesson.title,
+                "description": lesson.description,
+                "video_key": lesson.video_key,
+                "thumbnail": lesson.thumbnail,
+                "duration": lesson.duration,
+                "sort_order": lesson.sort_order,
+                "is_preview": lesson.is_preview,
+                "is_published": lesson.is_published,
+                "created_at": lesson.created_at,
+                "updated_at": lesson.updated_at,
+            })
+
+        return CustomResponse.successResponse(
+            data=data,
+            description="Lessons fetched successfully"
+        )
+
+    def post(self, request):
+
+        module_id = request.data.get("module_id")
+        title = request.data.get("title")
+        description = request.data.get("description")
+        video_key = request.data.get("video_key")
+        thumbnail = request.data.get("thumbnail")
+        duration = request.data.get("duration", 0)
+        sort_order = request.data.get("sort_order", 0)
+        is_preview = request.data.get("is_preview", False)
+        is_published = request.data.get("is_published", False)
+
+        # -------------------------
+        # Validation
+        # -------------------------
+
+        if not module_id:
+            return CustomResponse.errorResponse(
+                description="Module ID is required"
+            )
+
+        if not title:
+            return CustomResponse.errorResponse(
+                description="Lesson title is required"
+            )
+
+        title = title.strip()
+
+        if not title:
+            return CustomResponse.errorResponse(
+                description="Lesson title cannot be empty"
+            )
+
+        module = CourseModule.objects.select_related(
+            "course"
+        ).filter(
+            id=module_id
+        ).first()
+
+        if not module:
+            return CustomResponse.errorResponse(
+                description="Course module not found"
+            )
+
+        # -------------------------
+        # Create
+        # -------------------------
+
+        lesson = Lesson.objects.create(
+            module=module,
+            title=title,
+            description=description,
+            video_key=video_key,
+            thumbnail=thumbnail,
+            duration=duration,
+            sort_order=sort_order,
+            is_preview=is_preview,
+            is_published=is_published
+        )
+
+        return CustomResponse.successResponse(
+            data={
+                "id": str(lesson.id),
+
+                "course": {
+                    "id": str(module.course.id),
+                    "title": module.course.title
+                },
+
+                "module": {
+                    "id": str(module.id),
+                    "title": module.title
+                },
+
+                "title": lesson.title,
+                "description": lesson.description,
+                "video_key": lesson.video_key,
+                "thumbnail": lesson.thumbnail,
+                "duration": lesson.duration,
+                "sort_order": lesson.sort_order,
+                "is_preview": lesson.is_preview,
+                "is_published": lesson.is_published,
+            },
+            description="Lesson created successfully"
+        )
+
+    def put(self, request, lesson_id):
+
+        lesson = Lesson.objects.filter(
+            id=lesson_id
+        ).first()
+
+        if not lesson:
+            return CustomResponse.errorResponse(
+                description="Lesson not found"
+            )
+
+        module_id = request.data.get("module_id")
+        title = request.data.get("title")
+        description = request.data.get("description")
+        video_key = request.data.get("video_key")
+        thumbnail = request.data.get("thumbnail")
+        duration = request.data.get("duration")
+        sort_order = request.data.get("sort_order")
+        is_preview = request.data.get("is_preview")
+        is_published = request.data.get("is_published")
+
+        # -------------------------
+        # Module
+        # -------------------------
+
+        if module_id is not None:
+
+            module = CourseModule.objects.filter(
+                id=module_id
+            ).first()
+
+            if not module:
+                return CustomResponse.errorResponse(
+                    description="Course module not found"
+                )
+
+            lesson.module = module
+
+        # -------------------------
+        # Title
+        # -------------------------
+
+        if title is not None:
+
+            title = title.strip()
+
+            if not title:
+                return CustomResponse.errorResponse(
+                    description="Lesson title cannot be empty"
+                )
+
+            lesson.title = title
+
+        # -------------------------
+        # Other fields
+        # -------------------------
+
+        if description is not None:
+            lesson.description = description
+
+        if video_key is not None:
+            lesson.video_key = video_key
+
+        if thumbnail is not None:
+            lesson.thumbnail = thumbnail
+
+        if duration is not None:
+            lesson.duration = duration
+
+        if sort_order is not None:
+            lesson.sort_order = sort_order
+
+        if is_preview is not None:
+            lesson.is_preview = is_preview
+
+        if is_published is not None:
+            lesson.is_published = is_published
+        lesson.save()
+        return CustomResponse.successResponse(
+            data={
+                "id": str(lesson.id),
+                "course": {
+                    "id": str(lesson.module.course.id),
+                    "title": lesson.module.course.title
+                },
+                "module": {
+                    "id": str(lesson.module.id),
+                    "title": lesson.module.title
+                },
+                "title": lesson.title,
+                "description": lesson.description,
+                "video_key": lesson.video_key,
+                "thumbnail": lesson.thumbnail,
+                "duration": lesson.duration,
+                "sort_order": lesson.sort_order,
+                "is_preview": lesson.is_preview,
+                "is_published": lesson.is_published,
+            },
+            description="Lesson updated successfully"
+        )
+
+    def delete(self, request, lesson_id):
+        lesson = Lesson.objects.filter(
+            id=lesson_id
+        ).first()
+        if not lesson:
+            return CustomResponse.errorResponse(
+                description="Lesson not found"
+            )
+        lesson.is_published = False
+        lesson.save(
+            update_fields=[
+                "is_published",
+                "updated_at"
+            ]
+        )
+        return CustomResponse.successResponse(
+            data={
+                "id": str(lesson.id),
+                "is_published": lesson.is_published
+            },
+            description="Lesson unpublished successfully"
         )

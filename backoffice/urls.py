@@ -1,6 +1,7 @@
 from django.urls import path
 
-from backoffice.courses import CategoryListCreate, TechnologyListCreate, CourseListCreate
+from backoffice.courses import CategoryListCreate, TechnologyListCreate, CourseListCreate, CourseModuleListCreate, \
+    LessonListCreate
 from backoffice.plans import SubPlans
 
 urlpatterns = [
@@ -16,5 +17,9 @@ urlpatterns = [
     path("courses",CourseListCreate.as_view()),
     path("courses/<uuid:course_id>",CourseListCreate.as_view()),
 
+    path("modules",CourseModuleListCreate.as_view()),
+    path("modules/<uuid:module_id>",CourseModuleListCreate.as_view()),
 
+    path("lessons", LessonListCreate.as_view()),
+    path("lessons/<uuid:lesson_id>",LessonListCreate.as_view()),
 ]

@@ -178,3 +178,58 @@ class CourseModule(AuditModel):
     class Meta:
         db_table = "course_module"
         ordering = ["sort_order", "created_at"]
+
+class Lesson(AuditModel):
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    module = models.ForeignKey(
+        CourseModule,
+        on_delete=models.PROTECT,
+        related_name="lessons"
+    )
+
+    title = models.CharField(
+        max_length=200
+    )
+
+    description = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    video = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True
+    )
+    thumbnail = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True
+    )
+
+    duration = models.PositiveIntegerField(
+        default=0,
+        help_text="Lesson duration in seconds"
+    )
+
+    sort_order = models.PositiveIntegerField(
+        default=0
+    )
+
+    is_preview = models.BooleanField(
+        default=False
+    )
+    is_published = models.BooleanField(
+        default=False
+    )
+    def __str__(self):
+        return self.title
+    class Meta:
+        db_table = "lesson"
+        ordering = ["sort_order", "created_at"]
