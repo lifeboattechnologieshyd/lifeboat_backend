@@ -468,7 +468,7 @@ class ProfileView(APIView):
         if "bio" in data:
             user.bio = data["bio"]
         if "mobile" in data:
-            user.bio = data["mobile"]
+            user.mobile = data["mobile"]
         user.save()
         return CustomResponse.successResponse(data={}, description="Profile Updated Successfully")
 
