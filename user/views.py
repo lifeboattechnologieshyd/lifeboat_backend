@@ -451,7 +451,7 @@ class FileUploadView(APIView):
 
         except Exception as e:
             return CustomResponse().errorResponse(
-                description="File upload failed"
+                description=f"File upload failed {e}"
             )
 
 
