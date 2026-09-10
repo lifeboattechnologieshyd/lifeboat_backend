@@ -24,4 +24,4 @@ DEBUG = True
 ALLOWED_HOSTS = ["*"]
 
 FRONTEND_URL = "https://dev-web.lifeboattechnologies.com/"
-ISHVAA_EMAIL_API_KEY = 'ics_live_25I1njmlVD0OGiaL9orr4RxvTrgIO-JsR6HSRzkGcFY'
+ISHVAA_EMAIL_API_KEY = 'ishvaa_live_wdhe6pzdq9w64x8lc1i2tqtizsko7htj'

@@ -118,7 +118,7 @@ def send_otp_email(email, template, context, subject):
     )
     payload = {
         "from_name": "Lifeboat",
-        "from": "noreply@vocabbee.com",
+        "from": "noreply@lifeboattechnologies.com",
         "to": [
             email
         ],
