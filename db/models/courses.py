@@ -233,3 +233,68 @@ class Lesson(AuditModel):
     class Meta:
         db_table = "lesson"
         ordering = ["sort_order", "created_at"]
+
+
+class Video(AuditModel):
+    STATUS_CHOICES = (
+        ("uploaded", "Uploaded"),
+        ("processing", "Processing"),
+        ("ready", "Ready"),
+        ("failed", "Failed"),
+    )
+    LANGUAGE_CHOICES = (
+        ("english", "English"),
+        ("telugu", "Telugu"),
+        ("hindi", "Hindi"),
+    )
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+    name = models.CharField(max_length=200)
+
+    language = models.CharField(
+        max_length=30,
+        choices=LANGUAGE_CHOICES,
+        default="english"
+    )
+    original_key = models.CharField(
+        max_length=500,
+        help_text="S3 key of the original uploaded video"
+    )
+
+    hls_key = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="S3 key of the HLS master playlist"
+    )
+    media_job_id = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="uploaded"
+    )
+    duration = models.PositiveIntegerField(
+        default=0,
+        help_text="Video duration in seconds"
+    )
+    file_size = models.PositiveBigIntegerField(
+        default=0,
+        help_text="Original video size in bytes"
+    )
+    error_message = models.TextField(
+        blank=True,
+        null=True
+    )
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        db_table = "video"
+        ordering = ["-created_at"]

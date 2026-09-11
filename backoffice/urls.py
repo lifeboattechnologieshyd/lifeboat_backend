@@ -3,6 +3,7 @@ from django.urls import path
 from backoffice.courses import CategoryListCreate, TechnologyListCreate, CourseListCreate, CourseModuleListCreate, \
     LessonListCreate
 from backoffice.plans import SubPlans
+from backoffice.video_upload import VideoUploadURLAPIView
 
 urlpatterns = [
     path('plans', SubPlans.as_view()),
@@ -22,4 +23,6 @@ urlpatterns = [
 
     path("lessons", LessonListCreate.as_view()),
     path("lessons/<uuid:lesson_id>",LessonListCreate.as_view()),
+
+    path("videos/upload-url",VideoUploadURLAPIView.as_view()),
 ]

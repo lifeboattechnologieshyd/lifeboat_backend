@@ -1,6 +1,7 @@
 import re
 import uuid
 
+import boto3
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
@@ -32,3 +33,13 @@ def save_to_s3(path, file_obj):
     file_path = default_storage.save(f"{path}/{sanitized_filename}", ContentFile(file_obj.read()))
     file_url = settings.MEDIA_URL + file_path
     return file_url
+
+
+### this is for video
+def get_s3_client():
+    return boto3.client(
+        "s3",
+        region_name=settings.AWS_REGION,
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+    )

@@ -135,6 +135,8 @@ DATABASES = {
 #############################
 #       AWS CREDS         #
 #############################
+AWS_VIDEO_BUCKET_NAME = "course-videos-sf"
+
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME")
