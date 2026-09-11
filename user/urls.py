@@ -1,5 +1,6 @@
 from django.urls import path
 
+from user.courses import Courses
 from user.views import SignUpCheck, ValidateMagicToken, Plans, CreatePayment, Webhook, VerifySubscriptionPaymentAPIView, \
     VerifyOTP, SetPassword, Login, MySubscription, ProfileView, FileUploadView
 
@@ -16,7 +17,7 @@ urlpatterns = [
     path('webhook', Webhook.as_view()),
     path('verify-payment', VerifySubscriptionPaymentAPIView.as_view()),
 
-
     path("file/upload", FileUploadView.as_view()),
+    path("courses", Courses.as_view()),
 
 ]
