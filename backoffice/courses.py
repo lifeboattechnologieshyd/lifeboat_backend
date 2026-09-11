@@ -14,7 +14,6 @@ class CategoryListCreate(APIView):
             data.append({
                 "id": str(category.id),
                 "name": category.name,
-                "slug": category.slug,
                 "description": category.description,
                 "is_active": category.is_active,
                 "sort_order": category.sort_order,
