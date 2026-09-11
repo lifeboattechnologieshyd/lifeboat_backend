@@ -253,7 +253,7 @@ class Video(AuditModel):
         editable=False
     )
     name = models.CharField(max_length=200)
-
+    course_id = models.CharField(max_length=200, null=True)
     language = models.CharField(
         max_length=30,
         choices=LANGUAGE_CHOICES,

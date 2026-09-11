@@ -3,7 +3,7 @@ from django.urls import path
 from backoffice.courses import CategoryListCreate, TechnologyListCreate, CourseListCreate, CourseModuleListCreate, \
     LessonListCreate
 from backoffice.plans import SubPlans
-from backoffice.video_upload import VideoUploadURLAPIView
+from backoffice.video_upload import VideoUploadURLAPIView, VideoConvertAPIView, VideoStatusAPIView, Videos
 
 urlpatterns = [
     path('plans', SubPlans.as_view()),
@@ -25,4 +25,7 @@ urlpatterns = [
     path("lessons/<uuid:lesson_id>",LessonListCreate.as_view()),
 
     path("videos/upload-url",VideoUploadURLAPIView.as_view()),
+    path("videos",Videos.as_view()), #todo : pagination and filter to be added.
+    path("videos/convert",VideoConvertAPIView.as_view()),
+    path("videos/convert/status",VideoStatusAPIView.as_view()),
 ]
