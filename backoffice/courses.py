@@ -876,7 +876,7 @@ class LessonListCreate(APIView):
                 },
                 "title": lesson.title,
                 "description": lesson.description,
-                "video_key": lesson.video_key,
+                "video_key": lesson.video,
                 "thumbnail": lesson.thumbnail,
                 "duration": lesson.duration,
                 "sort_order": lesson.sort_order,
