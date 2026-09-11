@@ -55,7 +55,6 @@ class CategoryListCreate(APIView):
             data={
                 "id": str(category.id),
                 "name": category.name,
-                "slug": category.slug,
                 "description": category.description,
                 "is_active": category.is_active,
                 "sort_order": category.sort_order,
@@ -105,7 +104,6 @@ class CategoryListCreate(APIView):
             data={
                 "id": str(category.id),
                 "name": category.name,
-                "slug": category.slug,
                 "description": category.description,
                 "is_active": category.is_active,
                 "sort_order": category.sort_order,
@@ -154,7 +152,6 @@ class TechnologyListCreate(APIView):
             data.append({
                 "id": str(technology.id),
                 "name": technology.name,
-                "slug": technology.slug,
                 "description": technology.description,
                 "categories": categories,
                 "is_active": technology.is_active,
@@ -214,7 +211,6 @@ class TechnologyListCreate(APIView):
             data={
                 "id": str(technology.id),
                 "name": technology.name,
-                "slug": technology.slug,
                 "description": technology.description,
                 "categories": [
                     {
@@ -291,7 +287,6 @@ class TechnologyListCreate(APIView):
             data={
                 "id": str(technology.id),
                 "name": technology.name,
-                "slug": technology.slug,
                 "description": technology.description,
                 "categories": [
                     {
