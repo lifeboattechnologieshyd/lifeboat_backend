@@ -39,7 +39,7 @@ def save_to_s3(path, file_obj):
 def get_s3_client():
     return boto3.client(
         "s3",
-        region_name=settings.AWS_REGION,
+        region_name=settings.AWS_S3_REGION_NAME,
         aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
         aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
     )
