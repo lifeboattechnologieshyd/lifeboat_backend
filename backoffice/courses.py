@@ -31,26 +31,21 @@ class CategoryListCreate(APIView):
         description = request.data.get("description")
         icon = request.data.get("icon")
         sort_order = request.data.get("sort_order", 0)
-
         if not name:
             return CustomResponse.errorResponse(
                 description="Category name is required"
             )
-
         name = name.strip()
-
         if Category.objects.filter(name__iexact=name).exists():
             return CustomResponse.errorResponse(
                 description="Category already exists"
             )
-
         category = Category.objects.create(
             name=name,
             icon=icon,
             description=description,
             sort_order=sort_order
         )
-
         return CustomResponse.successResponse(
             data={
                 "id": str(category.id),
@@ -948,7 +943,7 @@ class LessonListCreate(APIView):
             module=module,
             title=title,
             description=description,
-            video_key=video_key,
+            video=video_key,
             thumbnail=thumbnail,
             duration=duration,
             sort_order=sort_order,
