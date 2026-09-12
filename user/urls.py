@@ -21,6 +21,5 @@ urlpatterns = [
     path("courses", Courses.as_view()),
     path("module", CourseModuleAPIView.as_view()),
     path("lessons", CourseLessonsAPIView.as_view()),
-    path("assign/video", AssignLesson.as_view()),
 
 ]
