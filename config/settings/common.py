@@ -135,13 +135,16 @@ DATABASES = {
 #############################
 #       AWS CREDS         #
 #############################
+AWS_VIDEO_BUCKET_NAME = "lbt-videos"
+AWS_MEDIACONVERT_ROLE_ARN="arn:aws:iam::225989339864:role/LifeboatMediaConvertDevRole"
+
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME")
 AWS_S3_BUCKET = os.environ.get("AWS_S3_BUCKET")
 AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL", None)  # Optional: set for MinIO
 AWS_S3_USE_SSL = os.environ.get("AWS_S3_USE_SSL", "True") == "True"  # Optional: set for MinIO
-AWS_QUERYSTRING_AUTH = os.environ.get("AWS_QUERYSTRING_AUTH", "False") == "False"
+AWS_QUERYSTRING_AUTH = os.environ.get("AWS_QUERYSTRING_AUTH", "False") == "True"
 
 
 #############################
@@ -275,8 +278,11 @@ CRONJOBS = [
 
 ]
 
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID")
+RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET")
+RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET")
 
 
-
-
+ISHVAA_BASE_URL = 'https://api.ishaa.eshily.com/api/v1/email/send'
+ISHVAA_EMAIL_API_KEY = 'ics_live_qogKpOyIIb0CnHy-TOWvhcitSg24oIuUVtLM7bClwP4'
 

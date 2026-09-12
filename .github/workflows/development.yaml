@@ -17,17 +17,17 @@ jobs:
       - name: Add SSH key
         run: |
           mkdir -p ~/.ssh
-          printf '%s' "${{ secrets.LIFEBOAT_DEV_EC2_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          printf '%s' "${{ secrets.DEVELOPMENT_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
       - name: Add known hosts
         run: |
-          ssh-keyscan -H "${{ secrets.LIFEBOAT_DEV_EC2_HOST }}" >> ~/.ssh/known_hosts
+          ssh-keyscan -H "${{ secrets.DEVELOPMENT_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Deploy to EC2
         run: |
           ssh -i ~/.ssh/id_rsa \
-            "${{ secrets.LIFEBOAT_DEV_EC2_USER }}@${{ secrets.LIFEBOAT_DEV_EC2_HOST }}" << 'EOF'
+            "${{ secrets.DEVELOPMENT_USERNAME }}@${{ secrets.DEVELOPMENT_HOST }}" << 'EOF'
 
           set -e
 

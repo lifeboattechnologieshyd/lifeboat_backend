@@ -1,6 +1,8 @@
 import re
 import uuid
 
+import boto3
+from botocore.config import Config
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
@@ -32,3 +34,39 @@ def save_to_s3(path, file_obj):
     file_path = default_storage.save(f"{path}/{sanitized_filename}", ContentFile(file_obj.read()))
     file_url = settings.MEDIA_URL + file_path
     return file_url
+
+
+### this is for video
+def get_s3_client():
+    return boto3.client(
+        "s3",
+        region_name=settings.AWS_S3_REGION_NAME,
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        config=Config(
+            signature_version="s3v4",
+            s3={
+                "addressing_style": "virtual",
+            },
+        ),
+    )
+
+def get_media_convert_client():
+    base_client = boto3.client(
+        "mediaconvert",
+        region_name=settings.AWS_S3_REGION_NAME,
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+    )
+
+    endpoints = base_client.describe_endpoints()["Endpoints"]
+
+    endpoint_url = endpoints[0]["Url"]
+
+    return boto3.client(
+        "mediaconvert",
+        region_name=settings.AWS_S3_REGION_NAME,
+        endpoint_url=endpoint_url,
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+    )
