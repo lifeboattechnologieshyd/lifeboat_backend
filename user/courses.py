@@ -81,7 +81,6 @@ class CourseLessonsAPIView(APIView):
 class AssignLesson(APIView):
 
     def post(self, request):
-        data = request.data
         lesson_id = request.data.get("lesson_id")
         video_id = request.data.get("video_id")
         if not lesson_id:
@@ -119,7 +118,7 @@ class AssignLesson(APIView):
         lesson.video = video.hls_key
         lesson.save(
             update_fields=[
-                "video_key",
+                "video",
             ]
         )
         video.status = "assigned"
