@@ -30,5 +30,4 @@ urlpatterns = [
     path("videos/convert/status",VideoStatusAPIView.as_view()),
 
     path("assign/video", AssignLesson.as_view()),
-
 ]
