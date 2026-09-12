@@ -1,6 +1,6 @@
 from django.urls import path
 
-from user.courses import Courses, CourseModuleAPIView, CourseLessonsAPIView, AssignLesson
+from user.courses import Courses, CourseModuleAPIView, CourseLessonsAPIView
 from user.views import SignUpCheck, ValidateMagicToken, Plans, CreatePayment, Webhook, VerifySubscriptionPaymentAPIView, \
     VerifyOTP, SetPassword, Login, MySubscription, ProfileView, FileUploadView
 
