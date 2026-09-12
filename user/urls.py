@@ -1,6 +1,6 @@
 from django.urls import path
 
-from user.courses import Courses, CourseModuleAPIView, CourseLessonsAPIView
+from user.courses import Courses, CourseModuleAPIView, CourseLessonsAPIView, AssignLesson
 from user.views import SignUpCheck, ValidateMagicToken, Plans, CreatePayment, Webhook, VerifySubscriptionPaymentAPIView, \
     VerifyOTP, SetPassword, Login, MySubscription, ProfileView, FileUploadView
 
@@ -21,5 +21,6 @@ urlpatterns = [
     path("courses", Courses.as_view()),
     path("module", CourseModuleAPIView.as_view()),
     path("lessons", CourseLessonsAPIView.as_view()),
+    path("assign/video", AssignLesson.as_view()),
 
 ]
