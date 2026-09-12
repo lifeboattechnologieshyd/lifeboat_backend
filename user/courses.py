@@ -116,7 +116,7 @@ class AssignLesson(APIView):
             return CustomResponse.errorResponse(
                 description="Video and lesson belong to different courses"
             )
-        lesson.video_key = video.hls_key
+        lesson.video = video.hls_key
         lesson.save(
             update_fields=[
                 "video_key",
