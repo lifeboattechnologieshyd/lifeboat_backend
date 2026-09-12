@@ -13,7 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.getenv(
-    "SECRET_KEY",
+    "DJANGO_SECRET_KEY",
     "django-insecure-local-dev-key"
 )
 #################################
