@@ -1,7 +1,7 @@
 from django.urls import path
 
 from backoffice.courses import CategoryListCreate, TechnologyListCreate, CourseListCreate, CourseModuleListCreate, \
-    LessonListCreate
+    LessonListCreate, AssignLesson
 from backoffice.plans import SubPlans
 from backoffice.video_upload import VideoUploadURLAPIView, VideoConvertAPIView, VideoStatusAPIView, Videos
 
@@ -28,4 +28,7 @@ urlpatterns = [
     path("videos",Videos.as_view()), #todo : pagination and filter to be added.
     path("videos/convert",VideoConvertAPIView.as_view()),
     path("videos/convert/status",VideoStatusAPIView.as_view()),
+
+    path("assign/video", AssignLesson.as_view()),
+
 ]
