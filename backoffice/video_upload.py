@@ -42,6 +42,7 @@ class VideoUploadURLAPIView(APIView):
         filename = request.data.get("filename")
         content_type = request.data.get("content_type")
         course_id = request.data.get("course_id")
+        course_id = uuid.UUID(course_id)
         language = request.data.get("language")
         if not course_id:
             return CustomResponse.errorResponse(
