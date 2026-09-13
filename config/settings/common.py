@@ -135,8 +135,8 @@ DATABASES = {
 #############################
 #       AWS CREDS         #
 #############################
-AWS_VIDEO_BUCKET_NAME = "lbt-videos"
-AWS_MEDIACONVERT_ROLE_ARN="arn:aws:iam::225989339864:role/LifeboatMediaConvertDevRole"
+AWS_VIDEO_BUCKET_NAME = os.environ.get("AWS_VIDEO_BUCKET_NAME", "lbt-videos")
+AWS_MEDIACONVERT_ROLE_ARN=os.environ.get("AWS_MEDIACONVERT_ROLE_ARN", "arn:aws:iam::225989339864:role/LifeboatMediaConvertDevRole")
 
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
