@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from db.models import AuditModel
+from shared.Constants import LANGUAGE_CHOICES
 
 
 class Category(AuditModel):
@@ -202,11 +203,7 @@ class Lesson(AuditModel):
         null=True
     )
 
-    video = models.CharField(
-        max_length=500,
-        blank=True,
-        null=True
-    )
+
     thumbnail = models.CharField(
         max_length=500,
         blank=True,
@@ -237,23 +234,26 @@ class Lesson(AuditModel):
 
 class Video(AuditModel):
     STATUS_CHOICES = (
+        ("uploading", "Uploading"),
         ("uploaded", "Uploaded"),
         ("processing", "Processing"),
         ("ready", "Ready"),
         ("failed", "Failed"),
+        ("assigned", "Assigned"),
     )
-    LANGUAGE_CHOICES = (
-        ("english", "English"),
-        ("telugu", "Telugu"),
-        ("hindi", "Hindi"),
-    )
+
     id = models.UUIDField(
         primary_key=True,
         default=uuid.uuid4,
         editable=False
     )
     name = models.CharField(max_length=200)
-    course_id = models.CharField(max_length=200, null=True)
+    course = models.ForeignKey(
+        Course,
+        null=True,
+        on_delete=models.PROTECT,
+        related_name="videos"
+    )
     language = models.CharField(
         max_length=30,
         choices=LANGUAGE_CHOICES,
@@ -298,3 +298,38 @@ class Video(AuditModel):
     class Meta:
         db_table = "video"
         ordering = ["-created_at"]
+
+class LessonVideo(AuditModel):
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    lesson = models.ForeignKey(
+        Lesson,
+        on_delete=models.PROTECT,
+        related_name="lesson_videos"
+    )
+
+    video = models.ForeignKey(
+        Video,
+        on_delete=models.PROTECT,
+        related_name="lesson_videos"
+    )
+
+
+
+    def __str__(self):
+        return f"{self.lesson.title} - {self.video.language}"
+
+    class Meta:
+        db_table = "lesson_video"
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=["lesson", "video"],
+                name="unique_lesson_video"
+            )
+        ]

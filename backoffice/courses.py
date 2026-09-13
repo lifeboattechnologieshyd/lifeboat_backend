@@ -1,7 +1,8 @@
 from django.db.models import Sum
+from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
-from db.models import Category, Technology, Course, CourseModule, Lesson, Video
+from db.models import Category, Technology, Course, CourseModule, Lesson, Video, LessonVideo
 from shared.utils import CustomResponse
 
 
@@ -1103,60 +1104,134 @@ class LessonListCreate(APIView):
 
 
 
-class AssignLesson(APIView):
+# class AssignLesson(APIView):
+#
+#     def post(self, request):
+#         lesson_id = request.data.get("lesson_id")
+#         video_id = request.data.get("video_id")
+#         if not lesson_id:
+#             return CustomResponse.errorResponse(
+#                 description="Lesson ID is required"
+#             )
+#         try:
+#             video = Video.objects.get(id=video_id)
+#         except Video.DoesNotExist:
+#             return CustomResponse.errorResponse(
+#                 description="Video not found"
+#             )
+#         try:
+#             lesson = Lesson.objects.get(id=lesson_id)
+#         except Lesson.DoesNotExist:
+#             return CustomResponse.errorResponse(
+#                 description="Lesson not found"
+#             )
+#             # Video must be successfully converted
+#         if video.status != "ready":
+#             return CustomResponse.errorResponse(
+#                   description="Only ready videos can be assigned to a lesson"
+#             )
+#
+#         if not video.hls_key:
+#             return CustomResponse.errorResponse(
+#                   description="HLS video is not available"
+#             )
+#         # Optional safety check:
+#         # video and lesson should belong to the same course
+#         if str(video.course_id) != str(lesson.module.course_id):
+#             return CustomResponse.errorResponse(
+#                 description="Video and lesson belong to different courses"
+#             )
+#         lesson.video = video.hls_key
+#         lesson.save(
+#             update_fields=[
+#                 "video",
+#             ]
+#         )
+#         video.status = "assigned"
+#         video.save(
+#             update_fields=[
+#                 "status",
+#             ]
+#         )
+#         return CustomResponse.successResponse(
+#             data={
+#                 "video_id": str(video.id),
+#                 "lesson_id": str(lesson.id),
+#                 "video_status": video.status,
+#                 "video_key": video.hls_key
+#             }
+#         )
 
-    def post(self, request):
-        lesson_id = request.data.get("lesson_id")
-        video_id = request.data.get("video_id")
-        if not lesson_id:
-            return CustomResponse.errorResponse(
-                description="Lesson ID is required"
-            )
-        try:
-            video = Video.objects.get(id=video_id)
-        except Video.DoesNotExist:
-            return CustomResponse.errorResponse(
-                description="Video not found"
-            )
-        try:
-            lesson = Lesson.objects.get(id=lesson_id)
-        except Lesson.DoesNotExist:
-            return CustomResponse.errorResponse(
-                description="Lesson not found"
-            )
-            # Video must be successfully converted
-        if video.status != "ready":
-            return CustomResponse.errorResponse(
-                  description="Only ready videos can be assigned to a lesson"
-            )
+class LessonVideosAPIView(APIView):
 
-        if not video.hls_key:
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, lesson_id):
+
+        lesson = Lesson.objects.filter(id=lesson_id).first()
+        if not lesson:
             return CustomResponse.errorResponse(
-                  description="HLS video is not available"
+                description="lesson not found",
+                data={},
             )
-        # Optional safety check:
-        # video and lesson should belong to the same course
-        if str(video.course_id) != str(lesson.module.course_id):
-            return CustomResponse.errorResponse(
-                description="Video and lesson belong to different courses"
-            )
-        lesson.video = video.hls_key
-        lesson.save(
-            update_fields=[
-                "video",
-            ]
+        lesson_videos = (
+            LessonVideo.objects
+            .filter(lesson=lesson)
+            .select_related("video")
+            .order_by("video__language")
         )
-        video.status = "assigned"
-        video.save(
-            update_fields=[
-                "status",
-            ]
-        )
+
+        data = []
+        for item in lesson_videos:
+            video = item.video
+            data.append({
+                "lesson_video_id": str(item.id),
+                "video_id": str(video.id),
+                "name": video.name,
+                "language": video.language,
+                "language_name": video.get_language_display(),
+                "status": video.status,
+                "duration": video.duration,
+                "file_size": video.file_size,
+                "original_key": video.original_key,
+                "hls_key": video.hls_key,
+                "media_job_id": video.media_job_id,
+                "error_message": video.error_message,
+                "created_at": item.created_at,
+                "updated_at": item.updated_at,
+            })
         return CustomResponse.successResponse(
+            description="Lesson videos fetched successfully",
+            data=data
+        )
+
+    def delete(self, request, lesson_video_id):
+
+        lesson_video = get_object_or_404(
+            LessonVideo.objects.select_related("video"),
+            id=lesson_video_id
+        )
+        video = lesson_video.video
+        # Remove the lesson-video relationship
+        lesson_video.delete()
+        # If this video is not assigned to any other lesson,
+        # mark it as ready again.
+        if not LessonVideo.objects.filter(
+                video=video
+        ).exists():
+            video.status = "ready"
+            video.save(
+                update_fields=[
+                    "status",
+                    "updated_at"
+                ]
+            )
+        return CustomResponse.successResponse(
+            description="Video removed from lesson successfully",
             data={
                 "video_id": str(video.id),
-                "lesson_id": str(lesson.id),
-                "video_status": video.status,
-                "video_key": video.hls_key
+                "language": video.language,
+                "language_name": video.get_language_display(),
+                "video_status": video.status
             }
         )

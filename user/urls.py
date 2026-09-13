@@ -1,8 +1,8 @@
 from django.urls import path
 
-from user.courses import Courses, CourseModuleAPIView, CourseLessonsAPIView
+from user.courses import Courses, CourseModuleAPIView, CourseLessonsAPIView, CourseDetails, LessonPlaybackAPIView
 from user.views import SignUpCheck, ValidateMagicToken, Plans, CreatePayment, Webhook, VerifySubscriptionPaymentAPIView, \
-    VerifyOTP, SetPassword, Login, MySubscription, ProfileView, FileUploadView
+    VerifyOTP, SetPassword, Login, MySubscription, ProfileView, FileUploadView, LanguagesAPIView
 
 urlpatterns = [
     path('email', SignUpCheck.as_view()),
@@ -19,7 +19,11 @@ urlpatterns = [
 
     path("file/upload", FileUploadView.as_view()),
     path("courses", Courses.as_view()),
+    path("courses/<uuid:course_id>", CourseDetails.as_view()),
     path("module", CourseModuleAPIView.as_view()),
     path("lessons", CourseLessonsAPIView.as_view()),
+    path("lesson/<uuid:lesson_id>", LessonPlaybackAPIView.as_view()),
+
+    path("languages", LanguagesAPIView.as_view()),
 
 ]
