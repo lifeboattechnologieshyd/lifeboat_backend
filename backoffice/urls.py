@@ -6,6 +6,7 @@ from backoffice.plans import SubPlans
 from backoffice.video_upload import VideoUploadURLAPIView, VideoConvertAPIView, VideoStatusAPIView, Videos
 
 urlpatterns = [
+
     path('plans', SubPlans.as_view()),
     path('plans/<uuid:plan_id>', SubPlans.as_view()),
 
