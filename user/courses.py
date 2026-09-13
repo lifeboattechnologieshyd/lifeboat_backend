@@ -244,7 +244,7 @@ class LessonPlaybackAPIView(APIView):
                 description="Video playback is not available",
                 data={}
             )
-        hls_url = f"https://{settings.AWS_CLOUDFRONT_DOMAIN}/{video.hls_key}"
+        hls_url = f"https://{settings.AWS_CLOUD_FRONT_DOMAIN}/{video.hls_key}"
         return CustomResponse.errorResponse(
             description="Lesson playback details fetched successfully",
             data={
