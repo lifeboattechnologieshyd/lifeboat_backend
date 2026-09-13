@@ -1,9 +1,10 @@
 from django.urls import path
 
 from backoffice.courses import CategoryListCreate, TechnologyListCreate, CourseListCreate, CourseModuleListCreate, \
-    LessonListCreate, AssignLesson
+    LessonListCreate, LessonVideosAPIView
 from backoffice.plans import SubPlans
-from backoffice.video_upload import VideoUploadURLAPIView, VideoConvertAPIView, VideoStatusAPIView, Videos
+from backoffice.video_upload import VideoUploadURLAPIView, VideoConvertAPIView, VideoStatusAPIView, Videos, \
+    VideoUploadStatus, LessonVideoAssignAPIView
 
 urlpatterns = [
 
@@ -24,11 +25,13 @@ urlpatterns = [
 
     path("lessons", LessonListCreate.as_view()),
     path("lessons/<uuid:lesson_id>",LessonListCreate.as_view()),
+    path("lessons/videos/<uuid:lesson_id>",LessonVideosAPIView.as_view()),
 
     path("videos/upload-url",VideoUploadURLAPIView.as_view()),
+    path("videos/status",VideoUploadStatus.as_view()),
     path("videos",Videos.as_view()), #todo : pagination and filter to be added.
     path("videos/convert",VideoConvertAPIView.as_view()),
     path("videos/convert/status",VideoStatusAPIView.as_view()),
 
-    path("assign/video", AssignLesson.as_view()),
+    path("assign/video", LessonVideoAssignAPIView.as_view()),
 ]

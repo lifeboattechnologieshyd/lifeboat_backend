@@ -3,3 +3,12 @@ FORBIDDEN = "You don't have permission to perform this action."
 INACTIVE_USER = "Your account is inactive."
 INVALID_PORTAL = "Invalid portal access."
 INVALID_ORGANIZATION = "Invalid organization access."
+
+
+LANGUAGES = {
+    "english": "English",
+    "telugu": "Telugu",
+    "hindi": "Hindi",
+}
+
+LANGUAGE_CHOICES = tuple(LANGUAGES.items())

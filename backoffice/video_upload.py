@@ -7,9 +7,12 @@ from django.conf import settings
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 
-from db.models import Video
+from db.models import Video, Lesson, LessonVideo, Course
+from shared.Constants import LANGUAGES
 from shared.clients.aws.s3 import get_s3_client, get_media_convert_client
 from shared.utils import CustomResponse
+from user.courses import Courses
+
 
 class Videos(APIView):
     permission_classes = [AllowAny]
@@ -41,6 +44,13 @@ class VideoUploadURLAPIView(APIView):
         filename = request.data.get("filename")
         content_type = request.data.get("content_type")
         course_id = request.data.get("course_id")
+
+        course = Course.objects.filter(id=course_id).first()
+        if not course:
+            return CustomResponse.errorResponse(data={},
+                                                description="Course not found")
+
+
         language = request.data.get("language")
         if not course_id:
             return CustomResponse.errorResponse(
@@ -49,6 +59,19 @@ class VideoUploadURLAPIView(APIView):
         if not language:
             return CustomResponse.errorResponse(
                 description="Language is required"
+            )
+        if language not in LANGUAGES:
+            return CustomResponse.successResponse(
+                data={
+                    "available_languages": [
+                        {
+                            "code": code,
+                            "name": name
+                        }
+                        for code, name in LANGUAGES.items()
+                    ]
+                },
+                status_code=400
             )
         if not filename:
             return CustomResponse.errorResponse(
@@ -89,10 +112,10 @@ class VideoUploadURLAPIView(APIView):
             video = Video.objects.create(
                 id=video_id,
                 name=safe_filename,
-                course_id=course_id,
+                course=course,
                 language=language,
                 original_key=s3_key,
-                status="uploaded",
+                status="uploading",
             )
             return CustomResponse.successResponse(
                 data={
@@ -106,6 +129,19 @@ class VideoUploadURLAPIView(APIView):
             return CustomResponse.errorResponse(
                 description=str(e)
             )
+
+class VideoUploadStatus(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        data = request.data
+        video_id = data.get("video_id", "")
+        video = Video.objects.filter(id=video_id).first()
+        if not video:
+            return CustomResponse().errorResponse(data={}, description="No video found")
+        video.status = "uploaded"
+        video.save()
+        return CustomResponse.successResponse(data={})
 
 
 class VideoConvertAPIView(APIView):
@@ -462,3 +498,109 @@ class VideoStatusAPIView(APIView):
             return CustomResponse.errorResponse(
                 description=str(e)
             )
+
+
+
+class LessonVideoAssignAPIView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+
+        lesson_id = request.data.get("lesson_id")
+        video_id = request.data.get("video_id")
+
+        if not lesson_id or not video_id:
+            return CustomResponse.errorResponse(
+                description="lesson_id and video_id are required",
+                data={},
+            )
+        lesson = Lesson.objects.filter(id=lesson_id).first()
+        if not lesson:
+            return CustomResponse.errorResponse(
+                description="lesson not found",
+                data={},
+            )
+        video = Video.objects.filter(id=video_id).first()
+        if not video:
+            return CustomResponse.errorResponse(
+                description="video not found",
+                data={},
+            )
+        # -----------------------------------------
+        # 1. Video and lesson must belong
+        #    to the same course
+        # -----------------------------------------
+
+        if video.course_id != lesson.module.course_id:
+            return CustomResponse.errorResponse(
+                description="Video and lesson must belong to the same course",
+                data={}
+            )
+
+        # -----------------------------------------
+        # 2. Video must be ready
+        # -----------------------------------------
+
+        if video.status != "ready":
+            return CustomResponse.errorResponse(
+                description="Video is not ready yet",
+                data={
+                    "video_status": video.status
+                }
+            )
+
+        # -----------------------------------------
+        # 3. Only one video per language
+        #    can be assigned to a lesson
+        # -----------------------------------------
+        existing = LessonVideo.objects.filter(
+            lesson=lesson,
+            video__language=video.language
+        ).exclude(
+            video=video
+        ).first()
+
+        if existing:
+            return CustomResponse.errorResponse(
+                description=f" video is already assigned to this lesson",
+                data={
+                    "existing_lesson_video_id": str(existing.id),
+                    "existing_video_id": str(existing.video_id),
+                    "language": video.language
+                }
+            )
+
+        # -----------------------------------------
+        # 4. Create assignment
+        # -----------------------------------------
+
+        lesson_video, created = LessonVideo.objects.get_or_create(
+            lesson=lesson,
+            video=video
+        )
+
+        # -----------------------------------------
+        # 5. Update video status
+        # -----------------------------------------
+
+        if video.status != "assigned":
+            video.status = "assigned"
+            video.save(
+                update_fields=[
+                    "status",
+                    "updated_at"
+                ]
+            )
+        return CustomResponse.successResponse(
+            description="Video assigned to lesson successfully",
+            data={
+                "lesson_video_id": str(lesson_video.id),
+                "lesson_id": str(lesson.id),
+                "video_id": str(video.id),
+                "language": video.language,
+                "language_name": video.get_language_display(),
+                "video_status": video.status,
+                "created": created
+            }
+        )

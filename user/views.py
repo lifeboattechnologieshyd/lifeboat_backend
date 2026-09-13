@@ -1,11 +1,9 @@
 import hashlib
 import hmac
 import json
-import secrets
 
 import razorpay
 from django.conf import settings
-from django.contrib.auth import authenticate
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import transaction
@@ -16,6 +14,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from db.models import UserMaster, MagicLoginToken, Plan, Subscription, PaymentTransaction, OTP
+from shared.Constants import LANGUAGES
 from shared.clients.aws.s3 import add_unique_suffix_to_filename, sanitize_filename
 from shared.utils import CustomResponse, send_magic_login_link, otp_preparation_for_login
 from user.razorpay_helper import create_razorpay_subscription, verify_signature, get_razorpay_client
@@ -1121,4 +1120,19 @@ class VerifySubscriptionPaymentAPIView(APIView):
             },
 
             description="Payment verified successfully"
+        )
+
+
+class LanguagesAPIView(APIView):
+
+    def get(self, request):
+        data = [
+            {
+                "code": code,
+                "name": name
+            }
+            for code, name in LANGUAGES.items()
+        ]
+        return CustomResponse.successResponse(
+            data=data,
         )
