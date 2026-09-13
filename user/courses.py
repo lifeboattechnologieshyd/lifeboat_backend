@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
@@ -67,7 +68,7 @@ class CourseLessonsAPIView(APIView):
                 "id": str(lesson.id),
                 "title": lesson.title,
                 "description": str(lesson.description),
-                "video": str(lesson.video),
+                "video": f"https://{settings.AWS_CLOUD_FRONT_DOMAIN}/{lesson.video}",
                 "thumbnail": str(lesson.thumbnail),
                 "duration": lesson.duration,
                 "is_preview": lesson.is_preview,
