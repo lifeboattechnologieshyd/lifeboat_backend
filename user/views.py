@@ -14,7 +14,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from db.models import UserMaster, MagicLoginToken, Plan, Subscription, PaymentTransaction, OTP
-from shared.Constants import LANGUAGES
+from shared.Constants import LANGUAGES, ROLES
 from shared.clients.aws.s3 import add_unique_suffix_to_filename, sanitize_filename
 from shared.utils import CustomResponse, send_magic_login_link, otp_preparation_for_login
 from user.razorpay_helper import create_razorpay_subscription, verify_signature, get_razorpay_client
@@ -225,6 +225,17 @@ class Login(APIView):
                 "end_at": subscription.end_at,
                 "next_billing_at": subscription.next_charge_at,
             }
+        else:
+            if user.role in ["admin", "guest", "internal"]:
+                subscription_data = {
+                    "is_active": True,
+                    "plan_code": "GUEST",
+                    "plan_name": "FREE",
+                    "status": "active",
+                    "start_at": "",
+                    "end_at": "",
+                    "next_billing_at": "",
+                }
         # -----------------------------------------
         # 5. Response
         # -----------------------------------------

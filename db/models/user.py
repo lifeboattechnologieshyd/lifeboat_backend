@@ -30,6 +30,7 @@ class UserMaster(AbstractBaseUser):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     bio = models.TextField(blank=True,null=True)
+    role = models.CharField(max_length=20, default='user')
     objects = CustomUserManager()
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
