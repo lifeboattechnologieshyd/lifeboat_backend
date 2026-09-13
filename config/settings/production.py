@@ -12,3 +12,5 @@ DEBUG = True
 #       SILK SETTINGS      #
 ############################
 ENABLE_SILK = False
+
+FRONTEND_URL = "https://lifeboattechnologies.com/"
