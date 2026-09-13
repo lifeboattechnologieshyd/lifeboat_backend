@@ -7,10 +7,12 @@ from django.conf import settings
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 
-from db.models import Video, Lesson, LessonVideo
+from db.models import Video, Lesson, LessonVideo, Course
 from shared.Constants import LANGUAGES
 from shared.clients.aws.s3 import get_s3_client, get_media_convert_client
 from shared.utils import CustomResponse
+from user.courses import Courses
+
 
 class Videos(APIView):
     permission_classes = [AllowAny]
@@ -42,7 +44,13 @@ class VideoUploadURLAPIView(APIView):
         filename = request.data.get("filename")
         content_type = request.data.get("content_type")
         course_id = request.data.get("course_id")
-        course_id = uuid.UUID(course_id)
+
+        course = Course.objects.filter(id=course_id).first()
+        if not course:
+            return CustomResponse.errorResponse(data={},
+                                                description="Course not found")
+
+
         language = request.data.get("language")
         if not course_id:
             return CustomResponse.errorResponse(
@@ -104,7 +112,7 @@ class VideoUploadURLAPIView(APIView):
             video = Video.objects.create(
                 id=video_id,
                 name=safe_filename,
-                course_id=course_id,
+                course=course,
                 language=language,
                 original_key=s3_key,
                 status="uploading",
