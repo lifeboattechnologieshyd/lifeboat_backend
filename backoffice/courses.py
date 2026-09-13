@@ -877,7 +877,6 @@ class LessonListCreate(APIView):
                 },
                 "title": lesson.title,
                 "description": lesson.description,
-                "video_key": lesson.video,
                 "thumbnail": lesson.thumbnail,
                 "duration": lesson.duration,
                 "sort_order": lesson.sort_order,
@@ -944,7 +943,6 @@ class LessonListCreate(APIView):
             module=module,
             title=title,
             description=description,
-            video=video_key,
             thumbnail=thumbnail,
             duration=duration,
             sort_order=sort_order,
@@ -968,7 +966,6 @@ class LessonListCreate(APIView):
 
                 "title": lesson.title,
                 "description": lesson.description,
-                "video_key": lesson.video,
                 "thumbnail": lesson.thumbnail,
                 "duration": lesson.duration,
                 "sort_order": lesson.sort_order,
@@ -1038,8 +1035,8 @@ class LessonListCreate(APIView):
         if description is not None:
             lesson.description = description
 
-        if video_key is not None:
-            lesson.video_key = video_key
+        # if video_key is not None:
+        #     lesson.video_key = video_key
 
         if thumbnail is not None:
             lesson.thumbnail = thumbnail
