@@ -20,14 +20,17 @@ class Videos(APIView):
     def get(self, request):
         videos = Video.objects.all()
         res = []
+
         #todo : course needs to be onetoone realtion not char field
         for item in videos:
+            hls_url = f"https://{settings.AWS_CLOUD_FRONT_DOMAIN}/{item.hls_key}"
+
             res.append(
                 {
                     "video_id": item.id,
                     "name": item.name,
                     "original_key": item.original_key,
-                    "hls_key": item.hls_key,
+                    "hls_key": hls_url,
                     "status": item.status,
                     "language": item.language,
                     "course_id": item.course_id,

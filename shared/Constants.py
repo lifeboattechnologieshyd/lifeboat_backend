@@ -12,3 +12,5 @@ LANGUAGES = {
 }
 
 LANGUAGE_CHOICES = tuple(LANGUAGES.items())
+
+ROLES = ["admin", "guest", "user", "superadmin", "internal"]
