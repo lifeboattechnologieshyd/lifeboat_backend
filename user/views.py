@@ -7,6 +7,7 @@ from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import transaction
+from django.http import JsonResponse
 from django.utils import timezone
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -15,6 +16,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from db.models import UserMaster, MagicLoginToken, Plan, Subscription, PaymentTransaction, OTP
 from shared.Constants import LANGUAGES, ROLES
+from shared.clients.aws.cloudfront import generate_cloudfront_signed_cookies
 from shared.clients.aws.s3 import add_unique_suffix_to_filename, sanitize_filename
 from shared.utils import CustomResponse, send_magic_login_link, otp_preparation_for_login
 from user.razorpay_helper import create_razorpay_subscription, verify_signature, get_razorpay_client
