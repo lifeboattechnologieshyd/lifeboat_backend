@@ -1,3 +1,4 @@
+cryptography
 # Django
 Django==5.1.*
 

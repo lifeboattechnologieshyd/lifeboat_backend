@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 
 from db.models import Course, CourseModule, Lesson, Video, LessonVideo
 from shared.Constants import LANGUAGES
+from shared.clients.aws.cloudfront import generate_cloudfront_signed_cookies
 from shared.utils import CustomResponse
 
 
@@ -245,7 +246,16 @@ class LessonPlaybackAPIView(APIView):
                 data={}
             )
         hls_url = f"https://{settings.AWS_CLOUD_FRONT_DOMAIN}/{video.hls_key}"
-        return CustomResponse.errorResponse(
+        resource_path = (
+                hls_url.rsplit("/", 1)[0] + "/*"
+        )
+
+        signed_cookies = generate_cloudfront_signed_cookies(
+            resource_path=resource_path,
+            expires_in=3600,
+        )
+
+        response = CustomResponse.successResponse(
             description="Lesson playback details fetched successfully",
             data={
                 "lesson": {
@@ -266,6 +276,37 @@ class LessonPlaybackAPIView(APIView):
                 }
             }
         )
+        # -----------------------------------------
+        # 9. Set CloudFront cookies
+        # -----------------------------------------
+        cookie_options = {
+            "max_age": 3600,
+            "domain": ".lifeboattechnologies.com",
+            "path": "/",
+            "secure": True,
+            "httponly": True,
+            "samesite": "None",
+        }
+
+        response.set_cookie(
+            "CloudFront-Policy",
+            signed_cookies["CloudFront-Policy"],
+            **cookie_options
+        )
+
+        response.set_cookie(
+            "CloudFront-Key-Pair-Id",
+            signed_cookies["CloudFront-Key-Pair-Id"],
+            **cookie_options
+        )
+
+        response.set_cookie(
+            "CloudFront-Signature",
+            signed_cookies["CloudFront-Signature"],
+            **cookie_options
+        )
+
+        return response
 
 
 
