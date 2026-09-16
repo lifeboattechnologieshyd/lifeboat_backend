@@ -7,8 +7,7 @@ INVALID_ORGANIZATION = "Invalid organization access."
 
 LANGUAGES = {
     "english": "English",
-    "telugu": "Telugu",
-    "hindi": "Hindi",
+    "telugu": "Telugu"
 }
 
 LANGUAGE_CHOICES = tuple(LANGUAGES.items())
