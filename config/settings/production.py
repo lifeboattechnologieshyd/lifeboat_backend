@@ -14,3 +14,7 @@ DEBUG = True
 ENABLE_SILK = False
 
 FRONTEND_URL = "https://lifeboattechnologies.com/"
+CORS_ALLOWED_ORIGINS = [
+    "https://lifeboattechnologies.com",
+    "https://www.lifeboattechnologies.com",
+]
