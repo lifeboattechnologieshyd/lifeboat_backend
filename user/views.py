@@ -55,7 +55,7 @@ class SignUpWithMobile(APIView):
                 return CustomResponse.successResponse(data={
                     "is_login_flow": True,
                     "password_required": False,
-                }, description="OTP Mail sent successfully")
+                }, description="whatsapp OTP sent successfully")
             else:
                 print("user from mobile so we need to send magic link to whatsapp")
                 send_magic_login_link(email=None, mobile=mobile)
