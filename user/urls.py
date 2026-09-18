@@ -2,12 +2,16 @@ from django.urls import path
 
 from user.courses import Courses, CourseModuleAPIView, CourseLessonsAPIView, CourseDetails, LessonPlaybackAPIView
 from user.views import SignUpCheck, ValidateMagicToken, Plans, CreatePayment, Webhook, VerifySubscriptionPaymentAPIView, \
-    VerifyOTP, SetPassword, Login, MySubscription, ProfileView, FileUploadView, LanguagesAPIView
+    VerifyOTP, SetPassword, Login, MySubscription, ProfileView, FileUploadView, LanguagesAPIView, SignUpWithMobile, \
+    VerifyWhatsapp, ValidateWhatsAppMagicToken
 
 urlpatterns = [
     path('email', SignUpCheck.as_view()),
+    path('mobile', SignUpWithMobile.as_view()),
     path('verify-token', ValidateMagicToken.as_view()),
+    path('verify-wa-token', ValidateWhatsAppMagicToken.as_view()),
     path('verify-otp', VerifyOTP.as_view()),
+    path('verify-wa-otp', VerifyWhatsapp.as_view()),
     path('set-password', SetPassword.as_view()),
     path('login', Login.as_view()),
     path('subscription', MySubscription.as_view()),
@@ -23,7 +27,5 @@ urlpatterns = [
     path("module", CourseModuleAPIView.as_view()),
     path("lessons", CourseLessonsAPIView.as_view()),
     path("lesson/<uuid:lesson_id>", LessonPlaybackAPIView.as_view()),
-
     path("languages", LanguagesAPIView.as_view()),
-
 ]

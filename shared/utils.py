@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from db.models import MagicLoginToken, OTP
+from shared.clients.whatsapp import send_otp, whatsapp_login_magic_link
 
 
 ########################
@@ -59,7 +60,7 @@ class CustomResponse:
             status=status,
         )
 
-def send_magic_login_link(email):
+def send_magic_login_link(email, mobile):
     raw_token = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(
         raw_token.encode()
@@ -67,21 +68,46 @@ def send_magic_login_link(email):
     expires_at = timezone.now() + timedelta(minutes=15)
     MagicLoginToken.objects.filter(
         email=email,
+        mobile=mobile,
         used_at__isnull=True
     ).update(
         used_at=timezone.now()
     )
     MagicLoginToken.objects.create(
         email=email,
+        mobile=mobile,
         token_hash=token_hash,
         expires_at=expires_at
     )
-    magic_link = f"{settings.FRONTEND_URL}/email-verification/{raw_token}/"
-    context = {
-        "magic_link": magic_link
-    }
-    send_otp_email(email, "emails/magic_email.html", context, f"Login to Lifeboat")
+    if email:
+        magic_link = f"{settings.FRONTEND_URL}/email-verification/{raw_token}/"
+        context = {
+            "magic_link": magic_link
+        }
+        send_otp_email(email, "emails/magic_email.html", context, f"Login to Lifeboat")
+    else:
+        whatsapp_login_magic_link(token=f"mobile-verification/{raw_token}/", mobile=mobile)
 
+
+
+def prepare_whatsapp_otp(mobile):
+    otp = str(
+        secrets.randbelow(1000000)
+    ).zfill(4)
+    expires_at = timezone.now() + timedelta(minutes=10)
+    OTP.objects.filter(
+        mobile=mobile,
+        verified_at__isnull=True
+    ).update(
+        expires_at=timezone.now()
+    )
+    OTP.objects.create(
+        mobile=mobile,
+        otp=otp,
+        expires_at=expires_at
+    )
+    send_otp(number=mobile, otp=otp)
+    print("Whatsapp OTP sent")
 
 
 def otp_preparation_for_login(email):

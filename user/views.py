@@ -7,7 +7,6 @@ from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import transaction
-from django.http import JsonResponse
 from django.utils import timezone
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -18,8 +17,51 @@ from db.models import UserMaster, MagicLoginToken, Plan, Subscription, PaymentTr
 from shared.Constants import LANGUAGES, ROLES
 from shared.clients.aws.cloudfront import generate_cloudfront_signed_cookies
 from shared.clients.aws.s3 import add_unique_suffix_to_filename, sanitize_filename
-from shared.utils import CustomResponse, send_magic_login_link, otp_preparation_for_login
+from shared.clients.whatsapp import send_otp
+from shared.utils import CustomResponse, send_magic_login_link, otp_preparation_for_login, prepare_whatsapp_otp
 from user.razorpay_helper import create_razorpay_subscription, verify_signature, get_razorpay_client
+
+
+class SignUpWithMobile(APIView):
+    def post(self, request):
+        print("checking if mobile exists or not in signup flow.")
+        data = request.data
+        mobile = data.get("mobile")
+        device_id = data.get("device_id")
+        fcm_id = data.get("fcm_id")
+        os = data.get("os")
+        model = data.get("model")
+        os_version = data.get("os_version")
+        source = data.get("source", "mobile")
+        user = UserMaster.objects.filter(mobile=mobile).first()
+        if user:
+            if not user.has_usable_password():
+                prepare_whatsapp_otp(mobile)
+                return CustomResponse.successResponse(data={
+                    "is_login_flow": True,
+                    "password_required": False,
+                    "mobile": user.mobile
+                }, description="OTP has been sent to your whatsapp")
+            else:
+                print("User exists so asking him password")
+                return CustomResponse.successResponse(data={
+                    "is_login_flow": True,
+                    "password_required":True,
+                    "mobile": user.mobile
+                }, description="Please enter password")
+        else:
+            if source == "website":
+                prepare_whatsapp_otp(mobile)
+                return CustomResponse.successResponse(data={
+                    "is_login_flow": True,
+                    "password_required": False,
+                }, description="OTP Mail sent successfully")
+            else:
+                print("user from mobile so we need to send magic link to whatsapp")
+                send_magic_login_link(email=None, mobile=mobile)
+                return CustomResponse.successResponse(data={
+                    "is_login_flow": False,
+                }, description="SignIn Request sent successfully")
 
 
 class SignUpCheck(APIView):
@@ -59,11 +101,77 @@ class SignUpCheck(APIView):
                     "password_required": False,
                 }, description="OTP Mail sent successfully")
             print("user does not exists so sending an email")
-            send_magic_login_link(email)
+            send_magic_login_link(email, None)
             return CustomResponse.successResponse(data={
                 "is_login_flow":False,
             }, description="Mail sent successfully")
 
+class VerifyWhatsapp(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        mobile = request.data.get("mobile")
+        otp = request.data.get("otp")
+        if not mobile:
+            return CustomResponse.errorResponse(
+                description="Email is required"
+            )
+        if not otp:
+            return CustomResponse.errorResponse(
+                description="OTP is required"
+            )
+        otp_record = (
+            OTP.objects
+            .filter(
+                mobile=mobile,
+                verified_at__isnull=True
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        if not otp_record:
+            return CustomResponse.errorResponse(
+                description="Invalid OTP"
+            )
+        if otp_record.expires_at <= timezone.now():
+            return CustomResponse.errorResponse(
+                description="OTP has expired"
+            )
+        if otp != otp_record.otp:
+            otp_record.attempts += 1
+            otp_record.save(
+                update_fields=[
+                    "attempts"
+                ]
+            )
+            return CustomResponse.errorResponse(
+                description="Invalid OTP"
+            )
+        otp_record.verified_at = timezone.now()
+        otp_record.save(
+            update_fields=[
+                "verified_at",
+            ]
+        )
+        user = UserMaster.objects.filter(
+            mobile=mobile
+        ).first()
+        if not user:
+            user = UserMaster.objects.create(
+                mobile=mobile,
+                username=mobile
+            )
+            print(f"New user created: {user.id}")
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+        return CustomResponse.successResponse(
+            data={
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "mobile": user.mobile,
+            },
+            description="Mobile Number verified successfully"
+        )
 
 class VerifyOTP(APIView):
     permission_classes = [AllowAny]
@@ -168,31 +276,35 @@ class Login(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
         email = request.data.get("email")
+        mobile = request.data.get("mobile")
         password = request.data.get("password")
         # -----------------------------------------
         # 1. Validate request
         # -----------------------------------------
-        if not email:
+        if not email and not mobile:
             return CustomResponse.errorResponse(
-                description="Email is required"
+                description="Email or Mobile is required"
             )
         if not password:
             return CustomResponse.errorResponse(
                 description="Password is required"
             )
-        email = email.strip().lower()
-        # -----------------------------------------
-        # 2. Authenticate user
-        # -----------------------------------------
+        if email:
+            email = email.strip().lower()
+            # -----------------------------------------
+            # 2. Authenticate user
+            # -----------------------------------------
 
-        user = UserMaster.objects.filter(
-            email=email
-        ).first()
-
-
+            user = UserMaster.objects.filter(
+                email=email
+            ).first()
+        else:
+            user = UserMaster.objects.filter(
+                mobile=mobile
+            ).first()
         if not user:
             return CustomResponse.errorResponse(
-                description="Invalid email"
+                description="Invalid Login Details"
             )
         if not user.check_password(password):
             return CustomResponse.errorResponse(
@@ -245,6 +357,7 @@ class Login(APIView):
             data={
                 "user_id": str(user.id),
                 "email": user.email,
+                "mobile": user.mobile,
                 "access_token": str(refresh.access_token),
                 "refresh_token": str(refresh),
                 "subscription":subscription_data
@@ -310,7 +423,62 @@ class ValidateMagicToken(APIView):
         else:
             return CustomResponse.errorResponse(data={},
                                                 description="Link Expired or Invalid, Please try again")
+class ValidateWhatsAppMagicToken(APIView):
 
+    def post(self, request):
+        token = request.data.get('token', "")
+        if token:
+            token_hash = hashlib.sha256(
+                token.encode()
+            ).hexdigest()
+            magic_token = MagicLoginToken.objects.filter(
+                token_hash=token_hash,
+                used_at__isnull=True
+            ).first()
+
+            if not magic_token:
+                return CustomResponse.errorResponse(
+                    description="Invalid or already used login link"
+                )
+            # Check expiry
+            if magic_token.expires_at <= timezone.now():
+                return CustomResponse.errorResponse(
+                    description="This login link has expired"
+                )
+            mobile = magic_token.mobile
+            print(f"Magic link validated for {mobile}")
+            # Check if user already exists
+            user = UserMaster.objects.filter(
+                mobile=mobile
+            ).first()
+            # Create user only after successful magic-link validation
+            if not user:
+                user = UserMaster.objects.create(
+                    mobile=mobile,
+                    username=mobile
+                )
+                print(f"New user created: {user.id}")
+            # Mark token as used
+            magic_token.used_at = timezone.now()
+            magic_token.save(
+                update_fields=["used_at"]
+            )
+            # Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+            return CustomResponse.successResponse(
+                data={
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                    "mobile": user.mobile,
+                    "is_new_user": True
+                },
+                description="Mobile verified successfully"
+            )
+        else:
+            return CustomResponse.errorResponse(data={},
+                                                description="Link Expired or Invalid, Please try again")
 class Plans(APIView):
     permission_classes = [AllowAny]
     def get(self, request):

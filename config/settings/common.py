@@ -291,3 +291,5 @@ RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET")
 ISHVAA_BASE_URL = 'https://api.ishaa.eshily.com/api/v1/email/send'
 ISHVAA_EMAIL_API_KEY = 'ics_live_qogKpOyIIb0CnHy-TOWvhcitSg24oIuUVtLM7bClwP4'
 
+WHATSAPP_API_KEY = os.getenv("WHATSAPP_API_KEY")
+LOGIN_MESSAGE_ID=11861

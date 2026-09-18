@@ -22,7 +22,7 @@ class CustomUserManager(BaseUserManager):
 class UserMaster(AbstractBaseUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     username = models.CharField(max_length=30)
-    mobile = models.CharField(max_length=20, null=True)
+    mobile = models.CharField(max_length=20, null=True, unique=True, blank=True)
     email = models.EmailField(max_length=100, unique=True, null=True)
     image = models.CharField(max_length=255, null=True)
     is_active = models.BooleanField(default=True)
@@ -44,7 +44,8 @@ class UserMaster(AbstractBaseUser):
 
 class MagicLoginToken(AuditModel):
     id = models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
-    email = models.EmailField(max_length=100)
+    email = models.EmailField(max_length=100, null=True)
+    mobile = models.CharField(max_length=100, null=True)
     token_hash = models.CharField(max_length=128)
     expires_at = models.DateTimeField()
     used_at = models.DateTimeField(
@@ -56,16 +57,17 @@ class MagicLoginToken(AuditModel):
     )
 
     class Meta:
-        db_table = "email-token"
+        db_table = "magic_token"
 
 
 class OTP(AuditModel):
     id = models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
-    email = models.EmailField(max_length=100)
+    email = models.EmailField(max_length=100,  null=True)
+    mobile = models.CharField(max_length=100, null=True)
     otp = models.CharField(max_length=128)
     expires_at = models.DateTimeField()
     verified_at = models.DateTimeField(null=True,blank=True)
     attempts = models.PositiveIntegerField(default=0)
     class Meta:
-        db_table = "email-otp"
+        db_table = "otp"
 
