@@ -113,7 +113,7 @@ class VerifyWhatsapp(APIView):
         otp = request.data.get("otp")
         if not mobile:
             return CustomResponse.errorResponse(
-                description="Email is required"
+                description="Mobile is required"
             )
         if not otp:
             return CustomResponse.errorResponse(
