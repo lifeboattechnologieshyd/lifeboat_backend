@@ -16,14 +16,14 @@ def get_number_id():
 
 
 # testing ------
-def login_logic():
-    resp = get_number_id()
-    if resp.get("success"):
-        data = resp.get("data")
-        data = data[0]
-        phone_number_id= data["phone_number_id"]
-        number = 9014083090
-        send_otp(phone_number_id, number)
+# def login_logic():
+#     resp = get_number_id()
+#     if resp.get("success"):
+#         data = resp.get("data")
+#         data = data[0]
+#         phone_number_id= data["phone_number_id"]
+#         number = 9014083090
+#         send_otp(phone_number_id, number)
 
 
 def send_otp(number_id=3094807680754266, number=9014083090, otp=1234):

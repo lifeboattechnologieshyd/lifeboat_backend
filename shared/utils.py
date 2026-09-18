@@ -93,7 +93,7 @@ def send_magic_login_link(email, mobile):
 def prepare_whatsapp_otp(mobile):
     otp = str(
         secrets.randbelow(1000000)
-    ).zfill(4)
+    ).zfill(6)
     expires_at = timezone.now() + timedelta(minutes=10)
     OTP.objects.filter(
         mobile=mobile,
